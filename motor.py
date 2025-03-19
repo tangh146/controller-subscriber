@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 from time import sleep
+GPIO.cleanup()
 
 def motor_control(in1=24, in2=23, en=25, encoder_a=17, encoder_b=27, mode='interactive'):
     """
@@ -207,13 +208,4 @@ def motor_control(in1=24, in2=23, en=25, encoder_a=17, encoder_b=27, mode='inter
                 
             else:
                 print("<<< wrong data >>>")
-                print("please enter the defined data to continue.....")
-
-# Example usage
-if __name__ == "__main__":
-    motor_control()  # Interactive mode
-    
-    # For angle-based control:
-    # motor = motor_control(mode='angle')
-    # motor['move_angle'](90)  # Move 90 degrees
-    # motor['cleanup']()  # Clean up when done
+                print("please enter the defined data to continue.....") 
