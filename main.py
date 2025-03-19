@@ -1,13 +1,23 @@
 from dotenv import load_dotenv
 import os
 from subscriber import ee, start_subscriber
+from motor import Motor
+
+import RPi.GPIO as GPIO          
+from time import sleep
 
 load_dotenv()
+motor = Motor()
 
 # This function will be called when a purchase is made
 @ee.on("purchase")
 def on_purchase(pots_away):
     print(f"RECIEVED MESSAGE = {pots_away}")
+
+
+
+
+
 
 # Set up subscriber
 if __name__ == "__main__":
