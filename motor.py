@@ -36,49 +36,38 @@ class L298NMotorController:
         self.last_encoder_a = 0
         self.last_encoder_b = 0
         
-        # Setup encoder pins
+        # Setup encoder pins (without edge detection)
         GPIO.setup(self.encoder_a_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(self.encoder_a_pin, GPIO.BOTH, callback=self._encoder_callback)
-        
         if self.encoder_b_pin:
-            # Setup quadrature encoding for direction detection
             GPIO.setup(self.encoder_b_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-            GPIO.add_event_detect(self.encoder_b_pin, GPIO.BOTH, callback=self._encoder_b_callback)
     
-    def _encoder_callback(self, channel):
-        """Callback for encoder channel A pulses, updates position"""
+    def read_encoder(self):
+        """
+        Read encoder position using polling method instead of interrupts
+        Should be called frequently in a loop
+        """
         a_state = GPIO.input(self.encoder_a_pin)
         
         if self.encoder_b_pin:
-            # Quadrature encoding for direction detection
             b_state = GPIO.input(self.encoder_b_pin)
             
             # Determine direction based on the state of both channels
             if a_state != self.last_encoder_a:
                 # If A changed
-                if a_state == 1:  # Rising edge on A
+                if a_state == 1 and self.last_encoder_a == 0:  # Rising edge on A
                     if b_state == 0:  # B is low
                         self.position += 1
                     else:  # B is high
                         self.position -= 1
-                else:  # Falling edge on A
-                    if b_state == 1:  # B is high
-                        self.position += 1
-                    else:  # B is low
-                        self.position -= 1
             
             self.last_encoder_a = a_state
+            self.last_encoder_b = b_state
         else:
             # Simple encoder (no direction detection)
             if a_state == 1 and self.last_encoder_a == 0:  # Rising edge
                 self.position += 1
             
             self.last_encoder_a = a_state
-    
-    def _encoder_b_callback(self, channel):
-        """Callback for encoder channel B pulses, used for direction detection"""
-        # Store the state for use in channel A callback
-        self.last_encoder_b = GPIO.input(self.encoder_b_pin)
     
     def set_direction(self, clockwise=True):
         """Set the direction of motor rotation"""
@@ -133,6 +122,9 @@ class L298NMotorController:
         
         # Wait until we've moved close to the desired position
         while True:
+            # Read encoder
+            self.read_encoder()
+            
             # Calculate remaining distance
             remaining_steps = abs(target_position - self.position)
             
@@ -155,7 +147,7 @@ class L298NMotorController:
                 time.sleep(0.05)
                 self.set_direction(clockwise)
             
-            time.sleep(0.01)  # Small delay to prevent CPU hogging
+            time.sleep(0.001)  # Small delay to prevent CPU hogging
         
         # Stop motor
         self.stop()
@@ -166,7 +158,9 @@ class L298NMotorController:
             if precise_adjustment <= 5:  # Small adjustment
                 self.set_direction(self.position > target_position)
                 self.set_speed(min_speed)
-                time.sleep(0.05)
+                while self.position != target_position:
+                    self.read_encoder()
+                    time.sleep(0.001)
                 self.stop()
         
         return self.position - start_position  # Return actual steps moved
@@ -192,7 +186,13 @@ def main():
         motor.set_direction(True)
         motor.set_speed(50)
         start_pos = motor.position
-        time.sleep(2)  # Run for 2 seconds
+        
+        # Run motor for calibration and actively read encoder
+        calibration_start_time = time.time()
+        while time.time() - calibration_start_time < 2:  # Run for 2 seconds
+            motor.read_encoder()
+            time.sleep(0.001)
+            
         motor.stop()
         total_steps = motor.position - start_pos
         time.sleep(1)
