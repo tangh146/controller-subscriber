@@ -31,6 +31,19 @@ class TB6600StepperMotor:
             GPIO.setup(self.enable_pin, GPIO.OUT)
             # Enable the driver (active low)
             GPIO.output(self.enable_pin, GPIO.LOW)
+        
+        print("Running motor for 1 revolution slowly...")
+        self.rotate_revolutions(1, delay=0.001)
+        
+        time.sleep(1)
+        
+        print("Running motor for 180 degrees quickly...")
+        self.rotate_degrees(180, delay=0.0003)
+        
+        time.sleep(1)
+        
+        print("Running motor for 1000 steps...")
+        self.step(1000, delay=0.0005)
     
     def enable(self):
         """Enable the motor driver if an enable pin is connected."""

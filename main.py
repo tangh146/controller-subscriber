@@ -17,9 +17,6 @@ def on_purchase(pots_away):
 
 
 
-
-
-
 # Set up subscriber
 if __name__ == "__main__":
     broker_host = os.getenv("MQTT_HOST")
