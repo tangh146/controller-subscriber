@@ -66,8 +66,8 @@ def forward():
         sleep(delay)
         GPIO.output(PUL, GPIO.LOW)
         sleep(delay)
-    GPIO.output(ENA, GPIO.LOW)
-    GPIO.output(ENAI, GPIO.LOW)
+    #GPIO.output(ENA, GPIO.LOW)
+    #GPIO.output(ENAI, GPIO.LOW)
     print('ENA set to LOW - Controller Disabled')
     sleep(.5) # pause for possible change direction
     return
