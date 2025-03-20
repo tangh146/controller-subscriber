@@ -2,7 +2,7 @@ import RPi.GPIO as GPIO
 import time
 
 class TB6600StepperMotor:
-    def __init__(self, pulse_pin, dir_pin, enable_pin=None, steps_per_rev=200, microstepping=1):
+    def __init__(self, pulse_pin, dir_pin, enable_pin=None, steps_per_rev=4800, microstepping=1):
         """
         Initialize the TB6600 stepper motor driver.
         

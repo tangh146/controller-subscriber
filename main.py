@@ -13,7 +13,7 @@ load_dotenv()
 @ee.on("purchase")
 def on_purchase(pots_away):
     print(f"RECIEVED MESSAGE = {pots_away}")
-    TB6600StepperMotor(pulse_pin=20, dir_pin=21, enable_pin=None)
+    TB6600StepperMotor(pulse_pin=20, dir_pin=21, enable_pin=None, steps_per_rev=4800)
 
 
 
