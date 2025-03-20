@@ -58,7 +58,7 @@ def forward():
     #
     sleep(.5) # pause due to a possible change direction
     GPIO.output(DIR, GPIO.LOW)
-    GPIO.output(DIRI, GPIO.LOW)
+    GPIO.output(DIR, GPIO.LOW)
     print('DIR set to LOW - Moving Forward at ' + str(delay))
     print('Controller PUL being driven.')
     for x in range(durationFwd): 
