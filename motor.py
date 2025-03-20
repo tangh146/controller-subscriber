@@ -1,6 +1,137 @@
 import RPi.GPIO as GPIO
 import time
 
+class TB6600StepperMotor:
+    def __init__(self, pulse_pin, dir_pin, enable_pin=None, steps_per_rev=4800, microstepping=1):
+        """
+        Initialize the TB6600 stepper motor driver.
+        
+        Args:
+            pulse_pin (int): GPIO pin connected to the PUL+ pin on TB6600
+            dir_pin (int): GPIO pin connected to the DIR+ pin on TB6600
+            enable_pin (int, optional): GPIO pin connected to the ENA+ pin on TB6600
+            steps_per_rev (int): Number of steps per revolution (defaults to 200)
+            microstepping (int): Microstepping setting on the TB6600 (1, 2, 4, 8, 16, or 32)
+        """
+        self.pulse_pin = pulse_pin
+        self.dir_pin = dir_pin
+        self.enable_pin = enable_pin
+        self.steps_per_rev = steps_per_rev
+        self.microstepping = microstepping
+        
+        # Setup GPIO
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(self.pulse_pin, GPIO.OUT)
+        GPIO.setup(self.dir_pin, GPIO.OUT)
+        
+        # Set direction to a default value (clockwise in this case)
+        GPIO.output(self.dir_pin, GPIO.HIGH)
+        
+        if self.enable_pin is not None:
+            GPIO.setup(self.enable_pin, GPIO.OUT)
+            # Enable the driver (active low)
+            GPIO.output(self.enable_pin, GPIO.LOW)
+        
+        # Initialize the L298N motor controller as well
+        self.l298n_motor = None
+    
+    def initialize_l298n_motor(self):
+        """Initialize the L298N motor controller"""
+        # Define pins for L298N motor controller
+        ENABLE_PIN = 18  # PWM pin
+        IN1_PIN = 23     # Direction control 1
+        IN2_PIN = 24     # Direction control 2
+        ENCODER_A_PIN = 17  # Encoder channel A
+        ENCODER_B_PIN = 27  # Encoder channel B
+        STEPS_PER_REV = 360  # Adjust based on your encoder's resolution
+        
+        # Create the L298N motor controller instance
+        self.l298n_motor = L298NMotorController(ENABLE_PIN, IN1_PIN, IN2_PIN, 
+                                               ENCODER_A_PIN, ENCODER_B_PIN, STEPS_PER_REV)
+        return self.l298n_motor
+        
+    def move(self):
+        """Run the TB6600 stepper motor first, then the L298N motor if initialized"""
+        print("TB6600: Running stepper motor for 1 revolution slowly...")
+        self.rotate_revolutions(1, delay=0.001)
+        
+        time.sleep(1)
+        
+        print("TB6600: Running stepper motor for 180 degrees quickly...")
+        self.rotate_degrees(180, delay=0.0003)
+        
+        time.sleep(1)
+        
+        print("TB6600: Running stepper motor for 1000 steps...")
+        self.step(1000, delay=0.0005)
+        
+        # If L298N motor is initialized, run it after the stepper motor
+        if self.l298n_motor is not None:
+            time.sleep(1)
+            print("L298N: Starting DC motor rotation...")
+            
+            # Perform a single precise 90-degree rotation with the L298N motor
+            print("L298N: Rotating exactly 90 degrees clockwise")
+            steps_moved = self.l298n_motor.rotate_degrees(90, speed=50, clockwise=True)
+            print(f"L298N: Moved {steps_moved} steps to achieve 90 degrees rotation")
+    
+    def enable(self):
+        """Enable the motor driver if an enable pin is connected."""
+        if self.enable_pin is not None:
+            GPIO.output(self.enable_pin, GPIO.LOW)
+    
+    def disable(self):
+        """Disable the motor driver if an enable pin is connected."""
+        if self.enable_pin is not None:
+            GPIO.output(self.enable_pin, GPIO.HIGH)
+    
+    def step(self, steps, delay=0.0005):
+        """
+        Move the motor a specified number of steps.
+        
+        Args:
+            steps (int): Number of steps to move
+            delay (float): Delay between pulses in seconds (controls speed)
+        """
+        for _ in range(steps):
+            GPIO.output(self.pulse_pin, GPIO.HIGH)
+            time.sleep(delay)
+            GPIO.output(self.pulse_pin, GPIO.LOW)
+            time.sleep(delay)
+    
+    def rotate_degrees(self, degrees, delay=0.0005):
+        """
+        Rotate the motor by a specified angle in degrees.
+        
+        Args:
+            degrees (float): The angle to rotate in degrees
+            delay (float): Delay between pulses in seconds (controls speed)
+        """
+        steps = int((degrees / 360.0) * self.steps_per_rev * self.microstepping)
+        self.step(steps, delay)
+    
+    def rotate_revolutions(self, revolutions, delay=0.0005):
+        """
+        Rotate the motor by a specified number of revolutions.
+        
+        Args:
+            revolutions (float): The number of revolutions to rotate
+            delay (float): Delay between pulses in seconds (controls speed)
+        """
+        steps = int(revolutions * self.steps_per_rev * self.microstepping)
+        self.step(steps, delay)
+    
+    def cleanup(self):
+        """Clean up GPIO resources."""
+        if self.enable_pin is not None:
+            self.disable()
+        # Also clean up L298N motor if initialized
+        if self.l298n_motor is not None:
+            self.l298n_motor.cleanup()
+        else:
+            GPIO.cleanup()
+
+
 class L298NMotorController:
     def __init__(self, enable_pin, in1_pin, in2_pin, encoder_a_pin, encoder_b_pin=None, steps_per_revolution=360):
         """
@@ -93,7 +224,7 @@ class L298NMotorController:
     def cleanup(self):
         """Clean up GPIO pins"""
         self.pwm.stop()
-        GPIO.cleanup()
+        # Note: We don't call GPIO.cleanup() here to avoid conflicts with the TB6600 motor
     
     def rotate_degrees(self, degrees, speed=50, clockwise=True):
         """
@@ -104,20 +235,23 @@ class L298NMotorController:
             speed: Motor speed (0-100)
             clockwise: Direction of rotation
         """
-        # Calculate target position
+        # Calculate target position with enhanced precision for 90-degree turns
         target_steps = int((degrees / 360) * self.steps_per_revolution)
         start_position = self.position
         target_position = start_position + target_steps if clockwise else start_position - target_steps
         
+        print(f"Starting position: {start_position}, Target position: {target_position}, Target steps: {target_steps}")
+        
         # Start motor
         self.set_direction(clockwise)
         
-        # Use PID-like approach for better precision
+        # Use improved PID-like approach for better precision
         max_speed = speed
-        min_speed = 20  # Minimum speed to keep motor turning
+        min_speed = 15  # Lower minimum speed for better precision
         
-        # Start with initial speed
-        current_speed = max_speed
+        # Start with a lower initial speed for better control with 90-degree turns
+        initial_speed = min_speed + (max_speed - min_speed) * 0.7
+        current_speed = initial_speed
         self.set_speed(current_speed)
         
         # Wait until we've moved close to the desired position
@@ -132,102 +266,81 @@ class L298NMotorController:
             if remaining_steps <= 1:
                 break
                 
-            # Slow down as we approach target for better precision
-            if remaining_steps < target_steps * 0.2:  # Last 20% of movement
-                # Gradual slowdown
-                deceleration_factor = remaining_steps / (target_steps * 0.2)
+            # Enhanced deceleration profile for precise 90-degree stops
+            if remaining_steps < target_steps * 0.3:  # Last 30% of movement (increased from 20%)
+                # More gradual slowdown
+                deceleration_factor = (remaining_steps / (target_steps * 0.3)) ** 1.5
                 current_speed = max(min_speed, int(min_speed + (max_speed - min_speed) * deceleration_factor))
                 self.set_speed(current_speed)
+                
+                # Add more frequent position checks during final approach
+                if remaining_steps < 10:
+                    # Extremely slow approach for final steps
+                    self.set_speed(min_speed)
             
             # Check if we've gone too far (compensate for overshoot)
             if (clockwise and self.position > target_position) or (not clockwise and self.position < target_position):
-                # Reverse direction briefly to correct
+                # Reverse direction briefly to correct with gentler correction
                 self.set_direction(not clockwise)
                 self.set_speed(min_speed)
-                time.sleep(0.05)
+                time.sleep(0.02)  # Shorter correction pulses
                 self.set_direction(clockwise)
             
             time.sleep(0.001)  # Small delay to prevent CPU hogging
         
-        # Stop motor
+        # Stop motor with gentle deceleration
+        self.set_speed(0)
+        time.sleep(0.05)  # Small pause to allow motor to fully stop
         self.stop()
         
         # Fine adjustment if needed (in case we overshot)
         if self.position != target_position:
             precise_adjustment = abs(self.position - target_position)
             if precise_adjustment <= 5:  # Small adjustment
+                print(f"Making fine adjustment of {precise_adjustment} steps")
                 self.set_direction(self.position > target_position)
                 self.set_speed(min_speed)
-                while self.position != target_position:
+                
+                # Use timed pulses for very small adjustments
+                adjustment_timeout = time.time() + 2  # 2 second timeout
+                while self.position != target_position and time.time() < adjustment_timeout:
                     self.read_encoder()
                     time.sleep(0.001)
                 self.stop()
         
+        actual_steps_moved = self.position - start_position
+        actual_degrees = (actual_steps_moved / self.steps_per_revolution) * 360
+        print(f"Actual movement: {actual_steps_moved} steps ({actual_degrees:.2f} degrees)")
+        
+        return actual_steps_moved
+        
         return self.position - start_position  # Return actual steps moved
 
 
-def main():
-    # Define pins - adjust these to match your wiring
-    ENABLE_PIN = 18  # PWM pin
-    IN1_PIN = 23     # Direction control 1
-    IN2_PIN = 24     # Direction control 2
-    ENCODER_A_PIN = 17  # Encoder channel A
-    ENCODER_B_PIN = 27  # Encoder channel B (for direction detection)
-    STEPS_PER_REV = 360  # Adjust based on your encoder's resolution
-    
-    # Setup the motor controller with encoder
-    motor = L298NMotorController(ENABLE_PIN, IN1_PIN, IN2_PIN, ENCODER_A_PIN, ENCODER_B_PIN, STEPS_PER_REV)
-    
-    try:
-        print("Starting motor control program")
-        
-        # Calibration step to determine actual steps per 60 degrees
-        print("Calibrating encoder steps per 60 degrees...")
-        motor.set_direction(True)
-        motor.set_speed(50)
-        start_pos = motor.position
-        
-        # Run motor for calibration and actively read encoder
-        calibration_start_time = time.time()
-        while time.time() - calibration_start_time < 2:  # Run for 2 seconds
-            motor.read_encoder()
-            time.sleep(0.001)
-            
-        motor.stop()
-        total_steps = motor.position - start_pos
-        time.sleep(1)
-        
-        # Calculate estimated steps for 60 degrees based on measured rotation
-        # This assumes the motor did approximately one full rotation in 2 seconds
-        estimated_rotation = 360  # degrees (assumption)
-        steps_per_degree = total_steps / estimated_rotation
-        steps_per_60_degrees = steps_per_degree * 60
-        
-        print(f"Calibration complete. Estimated steps per 60 degrees: {steps_per_60_degrees:.1f}")
-        
-        # Reset position counter
-        motor.position = 0
-        
-        # Perform precise 60-degree rotations
-        for i in range(5):
-            print(f"Rotation {i+1}: 60 degrees clockwise")
-            actual_steps = motor.rotate_degrees(60, speed=60, clockwise=True)
-            print(f"Moved {actual_steps} steps")
-            time.sleep(1)  # Pause between rotations
-            
-            print(f"Rotation {i+1}: 60 degrees counter-clockwise")
-            actual_steps = motor.rotate_degrees(60, speed=60, clockwise=False)
-            print(f"Moved {actual_steps} steps")
-            time.sleep(1)  # Pause between rotations
-    
-    except KeyboardInterrupt:
-        print("Program stopped by user")
-        
-    finally:
-        # Clean up
-        motor.cleanup()
-        print("Motor control program finished")
-
-
+# Example usage
 if __name__ == "__main__":
-    main()
+    try:
+        # Define pins connected to TB6600
+        PULSE_PIN = 20  # GPIO pin connected to PUL+
+        DIR_PIN = 21    # GPIO pin connected to DIR+
+        
+        # Create stepper motor instance
+        stepper_motor = TB6600StepperMotor(
+            pulse_pin=PULSE_PIN,
+            dir_pin=DIR_PIN,
+            enable_pin=None,  # Not using the enable pin
+            steps_per_rev=4800,
+            microstepping=16
+        )
+        
+        # Initialize and connect the L298N motor
+        stepper_motor.initialize_l298n_motor()
+        
+        # Move both motors in sequence (TB6600 first, then L298N)
+        stepper_motor.move()
+        
+    except KeyboardInterrupt:
+        print("\nProgram stopped by user")
+    finally:
+        if 'stepper_motor' in locals():
+            stepper_motor.cleanup()
