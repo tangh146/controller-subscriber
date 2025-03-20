@@ -80,7 +80,7 @@ def reverse():
     #
     sleep(.5) # pause due to a possible change direction
     GPIO.output(DIR, GPIO.HIGH)
-    GPIO.output(DIRI, GPIO.HIGH)
+    GPIO.output(DIR, GPIO.HIGH)
     print('DIR set to HIGH - Moving Backward at ' + str(delay))
     print('Controller PUL being driven.')
     #
