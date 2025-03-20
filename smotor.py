@@ -32,6 +32,7 @@ class TB6600StepperMotor:
             # Enable the driver (active low)
             GPIO.output(self.enable_pin, GPIO.LOW)
         
+    def move(self):
         print("Running motor for 1 revolution slowly...")
         self.rotate_revolutions(1, delay=0.001)
         
@@ -112,7 +113,7 @@ if __name__ == "__main__":
             pulse_pin=PULSE_PIN,
             dir_pin=DIR_PIN,
             enable_pin=None,  # Not using the enable pin
-            steps_per_rev=200,
+            steps_per_rev=4800,
             microstepping=16
         )
         
