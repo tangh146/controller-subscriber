@@ -135,7 +135,7 @@ def read_sensor():
             
             # Emit data via socket
             print("Emitting sensor_data event...")
-            socketio.emit('sensor_data', data)
+            socketio.emit('sensor_data', data, broadcast=True)
             print("Event emitted")
             
             time.sleep(1)  # 1 Hz update rate
