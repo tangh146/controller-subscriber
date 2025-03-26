@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SocketIO Test Dashboard</title>
+    <title>SocketIO Diagnostic Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
     <style>
         body {
@@ -36,6 +36,8 @@
             padding: 10px;
             border-radius: 4px;
             overflow-x: auto;
+            max-height: 200px;
+            overflow-y: auto;
         }
         .log-container {
             height: 200px;
@@ -44,52 +46,206 @@
             margin-top: 20px;
             padding: 10px;
         }
+        .tab-container {
+            margin-top: 20px;
+        }
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #ccc;
+        }
+        .tab-button {
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            border: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab-button.active {
+            background-color: #ddd;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-table th, .info-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .info-table th {
+            background-color: #f2f2f2;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>SocketIO Connection Test</h1>
+        <h1>SocketIO Diagnostic Dashboard</h1>
         
-        <p>
-            Connection Status: 
-            <span class="status disconnected" id="status-indicator"></span>
-            <span id="status-text">Disconnected</span>
-        </p>
-        
-        <h2>Raw Data</h2>
-        <div class="value-display">
-            <p>X-Axis: <span id="x-value">N/A</span></p>
-            <p>Y-Axis: <span id="y-value">N/A</span></p>
-            <p>Z-Axis: <span id="z-value">N/A</span></p>
+        <div class="tab-container">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="openTab(event, 'tab-status')">Status</button>
+                <button class="tab-button" onclick="openTab(event, 'tab-data')">Data View</button>
+                <button class="tab-button" onclick="openTab(event, 'tab-events')">Event Log</button>
+                <button class="tab-button" onclick="openTab(event, 'tab-diagnostics')">Diagnostics</button>
+            </div>
+            
+            <!-- Tab 1: Status -->
+            <div id="tab-status" class="tab-content active">
+                <h2>Connection Status</h2>
+                <table class="info-table">
+                    <tr>
+                        <th>Connection</th>
+                        <td>
+                            <span class="status disconnected" id="status-indicator-default"></span>
+                            <span id="status-text-default">Default Namespace (/)</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Sensor Namespace</th>
+                        <td>
+                            <span class="status disconnected" id="status-indicator-sensor"></span>
+                            <span id="status-text-sensor">Sensor Namespace (/sensor)</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Socket.IO Version</th>
+                        <td id="socketio-version">Checking...</td>
+                    </tr>
+                    <tr>
+                        <th>Connected Clients</th>
+                        <td id="connected-clients">Unknown</td>
+                    </tr>
+                    <tr>
+                        <th>Last Event Received</th>
+                        <td id="last-event-time">None</td>
+                    </tr>
+                </table>
+                
+                <h2>Test REST API</h2>
+                <button id="test-api">Fetch Current Data via HTTP</button>
+                <button id="test-status-api">Fetch Server Status</button>
+                <pre id="api-result">Click button to test</pre>
+            </div>
+            
+            <!-- Tab 2: Data View -->
+            <div id="tab-data" class="tab-content">
+                <h2>Real-time Accelerometer Data</h2>
+                <div class="value-display">
+                    <p>X-Axis: <span id="x-value">N/A</span></p>
+                    <p>Y-Axis: <span id="y-value">N/A</span></p>
+                    <p>Z-Axis: <span id="z-value">N/A</span></p>
+                </div>
+                
+                <h2>Latest Event Data</h2>
+                <pre id="event-data">No data received yet</pre>
+                
+                <h3>Data Source</h3>
+                <p id="data-source">Waiting for data...</p>
+            </div>
+            
+            <!-- Tab 3: Event Log -->
+            <div id="tab-events" class="tab-content">
+                <h2>Event Log</h2>
+                <button id="clear-log">Clear Log</button>
+                <div class="log-container" id="event-log">
+                    Waiting for events...
+                </div>
+            </div>
+            
+            <!-- Tab 4: Diagnostics -->
+            <div id="tab-diagnostics" class="tab-content">
+                <h2>Socket.IO Diagnostics</h2>
+                
+                <h3>Received Events (Last 10)</h3>
+                <table class="info-table" id="events-table">
+                    <tr>
+                        <th>Time</th>
+                        <th>Event Name</th>
+                        <th>Namespace</th>
+                        <th>Data Sample</th>
+                    </tr>
+                    <tr>
+                        <td colspan="4">No events received yet</td>
+                    </tr>
+                </table>
+                
+                <h3>Perform Diagnostics</h3>
+                <button id="test-namespaces">Test All Namespaces</button>
+                <button id="test-transport">Check Transport Type</button>
+                <button id="reconnect-socket">Force Reconnect</button>
+                
+                <pre id="diagnostics-result">Run diagnostics to see results</pre>
+            </div>
         </div>
-        
-        <h2>Latest Event Data</h2>
-        <pre id="event-data">No data received yet</pre>
-        
-        <h2>Event Log</h2>
-        <div class="log-container" id="event-log">
-            Waiting for events...
-        </div>
-        
-        <h2>Test REST API</h2>
-        <button id="test-api">Fetch Current Data via HTTP</button>
-        <pre id="api-result">Click button to test</pre>
     </div>
 
     <script>
+        // Track connection and event reception
+        let lastEventTime = null;
+        let receivedEvents = [];
+        
+        // Tab functionality
+        function openTab(evt, tabName) {
+            const tabContents = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove("active");
+            }
+            
+            const tabButtons = document.getElementsByClassName("tab-button");
+            for (let i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].classList.remove("active");
+            }
+            
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+        
         // Elements
-        const statusIndicator = document.getElementById('status-indicator');
-        const statusText = document.getElementById('status-text');
+        const statusIndicatorDefault = document.getElementById('status-indicator-default');
+        const statusTextDefault = document.getElementById('status-text-default');
+        const statusIndicatorSensor = document.getElementById('status-indicator-sensor');
+        const statusTextSensor = document.getElementById('status-text-sensor');
+        const socketioVersion = document.getElementById('socketio-version');
+        const connectedClients = document.getElementById('connected-clients');
+        const lastEventTimeElement = document.getElementById('last-event-time');
+        
         const xValue = document.getElementById('x-value');
         const yValue = document.getElementById('y-value');
         const zValue = document.getElementById('z-value');
         const eventData = document.getElementById('event-data');
+        const dataSource = document.getElementById('data-source');
+        
         const eventLog = document.getElementById('event-log');
+        const clearLogBtn = document.getElementById('clear-log');
+        
         const testApiBtn = document.getElementById('test-api');
+        const testStatusApiBtn = document.getElementById('test-status-api');
         const apiResult = document.getElementById('api-result');
         
-        // Connect to Socket.IO server
-        const socket = io();
+        const eventsTable = document.getElementById('events-table');
+        const testNamespacesBtn = document.getElementById('test-namespaces');
+        const testTransportBtn = document.getElementById('test-transport');
+        const reconnectSocketBtn = document.getElementById('reconnect-socket');
+        const diagnosticsResult = document.getElementById('diagnostics-result');
+        
+        // Display Socket.IO version
+        socketioVersion.textContent = io.version || 'Unknown';
+        
+        // Connect to Socket.IO server with different namespaces
+        const socketDefault = io();
+        const socketSensor = io('/sensor');
         
         // Add event to log
         function addLog(message) {
@@ -98,37 +254,136 @@
             eventLog.scrollTop = eventLog.scrollHeight;
         }
         
-        // Socket.IO event handlers
-        socket.on('connect', () => {
-            statusIndicator.className = 'status connected';
-            statusText.textContent = 'Connected';
-            addLog('Connected to server');
-        });
+        // Add event to events table
+        function addEventToTable(time, eventName, namespace, dataSample) {
+            // Create new row at the top
+            const newRow = eventsTable.insertRow(1);
+            
+            // Add cells
+            const cellTime = newRow.insertCell(0);
+            const cellEvent = newRow.insertCell(1);
+            const cellNamespace = newRow.insertCell(2);
+            const cellData = newRow.insertCell(3);
+            
+            // Add text
+            cellTime.textContent = time;
+            cellEvent.textContent = eventName;
+            cellNamespace.textContent = namespace;
+            cellData.textContent = dataSample;
+            
+            // Keep only 10 rows
+            if (eventsTable.rows.length > 11) {
+                eventsTable.deleteRow(11);
+            }
+            
+            // Remove "no events" row if it exists
+            if (eventsTable.rows.length === 3 && eventsTable.rows[2].cells.length === 1) {
+                eventsTable.deleteRow(2);
+            }
+        }
         
-        socket.on('disconnect', () => {
-            statusIndicator.className = 'status disconnected';
-            statusText.textContent = 'Disconnected';
-            addLog('Disconnected from server');
-        });
-        
-        socket.on('connect_error', (error) => {
-            statusIndicator.className = 'status disconnected';
-            statusText.textContent = 'Connection Error';
-            addLog(`Connection error: ${error.message}`);
-        });
-        
-        socket.on('sensor_data', (data) => {
-            // Update UI
+        // Update UI with sensor data
+        function updateUI(data, source) {
             xValue.textContent = data.accelerometer.x.toFixed(3);
             yValue.textContent = data.accelerometer.y.toFixed(3);
             zValue.textContent = data.accelerometer.z.toFixed(3);
             
-            // Show raw event data
             eventData.textContent = JSON.stringify(data, null, 2);
+            dataSource.textContent = `Data source: ${source}`;
             
-            // Add to log
-            addLog(`Received sensor data: X=${data.accelerometer.x.toFixed(3)}, Y=${data.accelerometer.y.toFixed(3)}, Z=${data.accelerometer.z.toFixed(3)}`);
+            lastEventTime = new Date();
+            lastEventTimeElement.textContent = lastEventTime.toLocaleTimeString();
+        }
+        
+        // Socket.IO event handlers - Default namespace
+        socketDefault.on('connect', () => {
+            statusIndicatorDefault.className = 'status connected';
+            statusTextDefault.textContent = 'Default Namespace (/) - Connected';
+            addLog('Connected to default namespace (/)');
         });
+        
+        socketDefault.on('disconnect', () => {
+            statusIndicatorDefault.className = 'status disconnected';
+            statusTextDefault.textContent = 'Default Namespace (/) - Disconnected';
+            addLog('Disconnected from default namespace (/)');
+        });
+        
+        socketDefault.on('connect_error', (error) => {
+            statusIndicatorDefault.className = 'status disconnected';
+            statusTextDefault.textContent = `Default Namespace (/) - Error: ${error.message}`;
+            addLog(`Connection error on default namespace: ${error.message}`);
+        });
+        
+        // Socket.IO event handlers - Sensor namespace
+        socketSensor.on('connect', () => {
+            statusIndicatorSensor.className = 'status connected';
+            statusTextSensor.textContent = 'Sensor Namespace (/sensor) - Connected';
+            addLog('Connected to sensor namespace (/sensor)');
+        });
+        
+        socketSensor.on('disconnect', () => {
+            statusIndicatorSensor.className = 'status disconnected';
+            statusTextSensor.textContent = 'Sensor Namespace (/sensor) - Disconnected';
+            addLog('Disconnected from sensor namespace (/sensor)');
+        });
+        
+        socketSensor.on('connect_error', (error) => {
+            statusIndicatorSensor.className = 'status disconnected';
+            statusTextSensor.textContent = `Sensor Namespace (/sensor) - Error: ${error.message}`;
+            addLog(`Connection error on sensor namespace: ${error.message}`);
+        });
+        
+        // Listen for various data events
+        socketDefault.on('sensor_data', (data) => {
+            addLog(`Received sensor_data event on default namespace`);
+            updateUI(data, 'sensor_data event (default namespace)');
+            addEventToTable(new Date().toLocaleTimeString(), 'sensor_data', '/', JSON.stringify(data.accelerometer).substring(0, 30));
+        });
+        
+        socketDefault.on('sensor_data_broadcast', (data) => {
+            addLog(`Received sensor_data_broadcast event on default namespace`);
+            updateUI(data, 'sensor_data_broadcast event (default namespace)');
+            addEventToTable(new Date().toLocaleTimeString(), 'sensor_data_broadcast', '/', JSON.stringify(data.accelerometer).substring(0, 30));
+        });
+        
+        socketDefault.on('sensor_data_room', (data) => {
+            addLog(`Received sensor_data_room event on default namespace`);
+            updateUI(data, 'sensor_data_room event (default namespace)');
+            addEventToTable(new Date().toLocaleTimeString(), 'sensor_data_room', '/', JSON.stringify(data.accelerometer).substring(0, 30));
+        });
+        
+        socketDefault.on('sensor_data_ns', (data) => {
+            addLog(`Received sensor_data_ns event on default namespace`);
+            updateUI(data, 'sensor_data_ns event (default namespace)');
+            addEventToTable(new Date().toLocaleTimeString(), 'sensor_data_ns', '/', JSON.stringify(data.accelerometer).substring(0, 30));
+        });
+        
+        socketDefault.on('test_event', (data) => {
+            addLog(`Received test_event on default namespace: ${JSON.stringify(data)}`);
+            addEventToTable(new Date().toLocaleTimeString(), 'test_event', '/', JSON.stringify(data));
+        });
+        
+        socketSensor.on('test_event', (data) => {
+            addLog(`Received test_event on sensor namespace: ${JSON.stringify(data)}`);
+            addEventToTable(new Date().toLocaleTimeString(), 'test_event', '/sensor', JSON.stringify(data));
+        });
+        
+        // Check for any event not explicitly handled
+        const originalOn = socketDefault.on;
+        socketDefault.on = function(event, callback) {
+            // Call the original .on
+            originalOn.call(this, event, function(data) {
+                if (!['connect', 'disconnect', 'connect_error', 'sensor_data', 
+                      'sensor_data_broadcast', 'sensor_data_room', 'sensor_data_ns', 
+                      'test_event'].includes(event)) {
+                    addLog(`Received unhandled event '${event}' on default namespace`);
+                    addEventToTable(new Date().toLocaleTimeString(), event, '/', 
+                                  typeof data === 'object' ? JSON.stringify(data).substring(0, 30) : data);
+                }
+                // Call the original callback
+                callback(data);
+            });
+        };
         
         // Test REST API button
         testApiBtn.addEventListener('click', () => {
@@ -140,6 +395,7 @@
                 .then(data => {
                     apiResult.textContent = JSON.stringify(data, null, 2);
                     addLog('REST API test completed');
+                    updateUI(data, 'REST API (/api/current)');
                 })
                 .catch(error => {
                     apiResult.textContent = `Error: ${error.message}`;
@@ -147,8 +403,96 @@
                 });
         });
         
+        // Test Status API button
+        testStatusApiBtn.addEventListener('click', () => {
+            addLog('Testing status API endpoint...');
+            apiResult.textContent = 'Loading...';
+            
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    apiResult.textContent = JSON.stringify(data, null, 2);
+                    addLog('Status API test completed');
+                    connectedClients.textContent = data.connections || 'Unknown';
+                })
+                .catch(error => {
+                    apiResult.textContent = `Error: ${error.message}`;
+                    addLog(`Status API error: ${error.message}`);
+                });
+        });
+        
+        // Clear log button
+        clearLogBtn.addEventListener('click', () => {
+            eventLog.innerHTML = 'Log cleared.';
+        });
+        
+        // Test namespaces button
+        testNamespacesBtn.addEventListener('click', () => {
+            addLog('Testing namespace connectivity...');
+            diagnosticsResult.textContent = 'Testing namespaces...';
+            
+            const results = {
+                defaultNamespace: socketDefault.connected,
+                sensorNamespace: socketSensor.connected,
+                defaultSocketId: socketDefault.id || 'Not connected',
+                sensorSocketId: socketSensor.id || 'Not connected'
+            };
+            
+            diagnosticsResult.textContent = JSON.stringify(results, null, 2);
+            addLog(`Namespace test results: Default=${results.defaultNamespace}, Sensor=${results.sensorNamespace}`);
+        });
+        
+        // Test transport button
+        testTransportBtn.addEventListener('click', () => {
+            addLog('Checking transport type...');
+            diagnosticsResult.textContent = 'Checking transport...';
+            
+            const results = {
+                defaultTransport: socketDefault.io.engine.transport.name,
+                defaultUpgrade: socketDefault.io.engine.upgrades,
+                defaultProtocol: socketDefault.io.engine.protocol,
+                defaultQuery: socketDefault.io.opts.query
+            };
+            
+            diagnosticsResult.textContent = JSON.stringify(results, null, 2);
+            addLog(`Transport type: ${results.defaultTransport}`);
+        });
+        
+        // Force reconnect button
+        reconnectSocketBtn.addEventListener('click', () => {
+            addLog('Forcing socket reconnection...');
+            socketDefault.disconnect();
+            socketSensor.disconnect();
+            
+            setTimeout(() => {
+                socketDefault.connect();
+                socketSensor.connect();
+                addLog('Reconnection attempt complete');
+            }, 1000);
+        });
+        
+        // Update the connection status periodically
+        setInterval(() => {
+            // Update last event time display
+            if (lastEventTime) {
+                const now = new Date();
+                const diffSeconds = Math.floor((now - lastEventTime) / 1000);
+                lastEventTimeElement.textContent = `${lastEventTime.toLocaleTimeString()} (${diffSeconds}s ago)`;
+            }
+            
+            // Fetch status to update connected clients
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    connectedClients.textContent = data.connections || 'Unknown';
+                })
+                .catch(error => {
+                    console.error('Error fetching status:', error);
+                });
+        }, 5000);
+        
         // Log initial load
-        addLog('Page loaded, waiting for socket connection...');
+        addLog('Page loaded, waiting for socket connections...');
     </script>
 </body>
 </html>

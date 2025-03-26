@@ -1,16 +1,16 @@
 import time
 import threading
-import random  # For generating test data if needed
-from flask import Flask, jsonify, render_template
+import random
+from flask import Flask, jsonify, render_template, request
 from flask_socketio import SocketIO
 
 # Flask app setup
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
 
-# Global flag to check if we should generate fake data (use if sensor unavailable)
-USE_FAKE_DATA = False  # Set to True if you want to test without a real sensor
+# Global flag to check if we should generate fake data
+USE_FAKE_DATA = False
 
 # Try to import sensor libraries
 try:
@@ -97,7 +97,7 @@ def read_raw_data(addr):
         print(f"Error reading data from register {hex(addr)}: {e}")
         return 0  # Return zero on error
 
-# Function to read sensor data (or generate fake data) and emit via socket
+# Function to read sensor data and emit via socket with multiple strategies
 def read_sensor():
     global USE_FAKE_DATA
     
@@ -133,10 +133,21 @@ def read_sensor():
                 }
             }
             
-            # Emit data via socket
-            print("Emitting sensor_data event...")
-            socketio.emit('sensor_data', data, broadcast=True)
-            print("Event emitted")
+            # Try different emission strategies
+            print("Emitting with standard method...")
+            socketio.emit('sensor_data', data)
+            
+            print("Emitting with broadcast flag...")
+            socketio.emit('sensor_data_broadcast', data, broadcast=True)
+            
+            print("Emitting to all clients in room...")
+            socketio.emit('sensor_data_room', data, room='sensor_watchers')
+            
+            print("Emitting with namespace...")
+            socketio.emit('sensor_data_ns', data, namespace='/')
+            
+            # Log the number of connected clients
+            print(f"Connected clients: {len(socketio.server.eio.sockets)}")
             
             time.sleep(1)  # 1 Hz update rate
             
@@ -144,10 +155,27 @@ def read_sensor():
             print(f"Error in sensor reading: {e}")
             time.sleep(1)
 
-# Routes
+# Socket.IO event handlers
+@socketio.on('connect')
+def handle_connect():
+    print(f"Client connected - SID: {request.sid}, Namespace: {request.namespace}")
+    socketio.server.enter_room(request.sid, 'sensor_watchers')
+    # Send a test event immediately
+    socketio.emit('test_event', {'test': 'message'}, namespace='/', room=request.sid)
+    
+@socketio.on('connect', namespace='/sensor')
+def handle_connect_sensor():
+    print(f"Client connected to /sensor namespace - SID: {request.sid}")
+    socketio.emit('test_event', {'test': 'message from sensor namespace'}, namespace='/sensor', room=request.sid)
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f"Client disconnected - SID: {request.sid}")
+
+# Flask routes
 @app.route('/')
 def index():
-    return render_template('test-socketio.html')
+    return render_template('test-socketio-diagnostic.html')
 
 @app.route('/api/current')
 def current_data():
@@ -177,20 +205,24 @@ def current_data():
 def status():
     global USE_FAKE_DATA
     
+    # Get socket.io connection info
+    connections = len(socketio.server.eio.sockets)
+    
     return jsonify({
         'status': 'running',
         'using_fake_data': USE_FAKE_DATA,
+        'connections': connections,
         'timestamp': time.time()
     })
 
 if __name__ == '__main__':
-    print("SocketIO Test Server - Starting...")
+    print("Enhanced SocketIO Test Server - Starting...")
     
     # Start sensor reading in a separate thread
     sensor_thread = threading.Thread(target=read_sensor)
     sensor_thread.daemon = True
     sensor_thread.start()
     
-    # Start the Flask app
+    # Start the Flask app with debug logging
     print("Server starting at http://0.0.0.0:5000")
     socketio.run(app, host='0.0.0.0', port=5000, debug=False)
