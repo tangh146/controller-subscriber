@@ -301,6 +301,9 @@ def read_sensor():
             
             # Emit data via socket
             socketio.emit('sensor_data', data)
+
+            # Add this to your app.py in the read_sensor function, right after the socketio.emit line:
+            print(f"Emitted data: X={acc_x:.3f}, Y={acc_y:.3f}, Z={acc_z:.3f}")
             
             # Increment counter
             sample_count += 1

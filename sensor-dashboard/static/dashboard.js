@@ -244,6 +244,21 @@ function updateUI(data) {
     addTableRow(data);
 }
 
+// Add this function to dashboard.js
+function fetchLatestData() {
+    fetch('/api/current')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Fetched latest data:', data);
+            if (!data.error) {
+                updateUI(data);
+            }
+        })
+        .catch(error => console.error('Error fetching data:', error));
+}
+
+/
+
 // Socket.IO event handlers
 socket.on('connect', () => {
     elements.status.indicator.className = 'inline-block h-4 w-4 rounded-full bg-green-500 mr-2';
@@ -251,6 +266,9 @@ socket.on('connect', () => {
     
     // Load historical data
     loadHistoricalData();
+
+    // Add this line after loadHistoricalData() call
+    setInterval(fetchLatestData, 3000); // Poll every 3 seconds
 });
 
 socket.on('disconnect', () => {
@@ -267,8 +285,12 @@ elements.loadMoreBtn.addEventListener('click', () => {
     loadHistoricalData();
 });
 
-// Initial load of historical data
-loadHistoricalData();
+// Replace the 'Initial load of historical data' line with:
+// Wait for DOM to fully load before initializing
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize chart and load data
+    loadHistoricalData();
+});
 
 // Check connection status periodically
 setInterval(() => {
