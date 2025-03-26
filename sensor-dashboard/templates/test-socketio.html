@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocketIO Test Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .connected {
+            background-color: green;
+        }
+        .disconnected {
+            background-color: red;
+        }
+        .value-display {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .log-container {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            margin-top: 20px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SocketIO Connection Test</h1>
+        
+        <p>
+            Connection Status: 
+            <span class="status disconnected" id="status-indicator"></span>
+            <span id="status-text">Disconnected</span>
+        </p>
+        
+        <h2>Raw Data</h2>
+        <div class="value-display">
+            <p>X-Axis: <span id="x-value">N/A</span></p>
+            <p>Y-Axis: <span id="y-value">N/A</span></p>
+            <p>Z-Axis: <span id="z-value">N/A</span></p>
+        </div>
+        
+        <h2>Latest Event Data</h2>
+        <pre id="event-data">No data received yet</pre>
+        
+        <h2>Event Log</h2>
+        <div class="log-container" id="event-log">
+            Waiting for events...
+        </div>
+        
+        <h2>Test REST API</h2>
+        <button id="test-api">Fetch Current Data via HTTP</button>
+        <pre id="api-result">Click button to test</pre>
+    </div>
+
+    <script>
+        // Elements
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const xValue = document.getElementById('x-value');
+        const yValue = document.getElementById('y-value');
+        const zValue = document.getElementById('z-value');
+        const eventData = document.getElementById('event-data');
+        const eventLog = document.getElementById('event-log');
+        const testApiBtn = document.getElementById('test-api');
+        const apiResult = document.getElementById('api-result');
+        
+        // Connect to Socket.IO server
+        const socket = io();
+        
+        // Add event to log
+        function addLog(message) {
+            const time = new Date().toLocaleTimeString();
+            eventLog.innerHTML += `<div>[${time}] ${message}</div>`;
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+        
+        // Socket.IO event handlers
+        socket.on('connect', () => {
+            statusIndicator.className = 'status connected';
+            statusText.textContent = 'Connected';
+            addLog('Connected to server');
+        });
+        
+        socket.on('disconnect', () => {
+            statusIndicator.className = 'status disconnected';
+            statusText.textContent = 'Disconnected';
+            addLog('Disconnected from server');
+        });
+        
+        socket.on('connect_error', (error) => {
+            statusIndicator.className = 'status disconnected';
+            statusText.textContent = 'Connection Error';
+            addLog(`Connection error: ${error.message}`);
+        });
+        
+        socket.on('sensor_data', (data) => {
+            // Update UI
+            xValue.textContent = data.accelerometer.x.toFixed(3);
+            yValue.textContent = data.accelerometer.y.toFixed(3);
+            zValue.textContent = data.accelerometer.z.toFixed(3);
+            
+            // Show raw event data
+            eventData.textContent = JSON.stringify(data, null, 2);
+            
+            // Add to log
+            addLog(`Received sensor data: X=${data.accelerometer.x.toFixed(3)}, Y=${data.accelerometer.y.toFixed(3)}, Z=${data.accelerometer.z.toFixed(3)}`);
+        });
+        
+        // Test REST API button
+        testApiBtn.addEventListener('click', () => {
+            addLog('Testing REST API endpoint...');
+            apiResult.textContent = 'Loading...';
+            
+            fetch('/api/current')
+                .then(response => response.json())
+                .then(data => {
+                    apiResult.textContent = JSON.stringify(data, null, 2);
+                    addLog('REST API test completed');
+                })
+                .catch(error => {
+                    apiResult.textContent = `Error: ${error.message}`;
+                    addLog(`REST API error: ${error.message}`);
+                });
+        });
+        
+        // Log initial load
+        addLog('Page loaded, waiting for socket connection...');
+    </script>
+</body>
+</html>
