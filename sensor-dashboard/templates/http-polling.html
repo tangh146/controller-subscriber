@@ -1,0 +1,364 @@
+<h1 class="text-3xl font-bold text-gray-800">Accelerometer Dashboard</h1>
+            <p class="text-gray-600">Real-time monitoring of MPU6050 accelerometer data</p>
+            <div class="mt-2">
+                <span id="status-indicator" class="inline-block h-3 w-3 rounded-full bg-gray-500"></span>
+                <span id="status-text" class="text-sm text-gray-600">Connecting...</span>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- X-axis Card -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">X-Axis</h2>
+                    <span class="text-blue-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="flex items-end">
+                    <span id="acc-x-value" class="text-4xl font-bold text-gray-800">0.000</span>
+                    <span class="ml-2 text-xl text-gray-600">g</span>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="acc-x-bar" class="progress-bar bg-blue-600 h-2.5 rounded-full" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Y-axis Card -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">Y-Axis</h2>
+                    <span class="text-green-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="flex items-end">
+                    <span id="acc-y-value" class="text-4xl font-bold text-gray-800">0.000</span>
+                    <span class="ml-2 text-xl text-gray-600">g</span>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="acc-y-bar" class="progress-bar bg-green-600 h-2.5 rounded-full" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Z-axis Card -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">Z-Axis</h2>
+                    <span class="text-red-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="flex items-end">
+                    <span id="acc-z-value" class="text-4xl font-bold text-gray-800">0.000</span>
+                    <span class="ml-2 text-xl text-gray-600">g</span>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="acc-z-bar" class="progress-bar bg-red-600 h-2.5 rounded-full" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Accelerometer History</h2>
+            <canvas id="accelerometer-chart" class="w-full h-64"></canvas>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">Recent Readings</h2>
+                <div>
+                    <span id="last-update" class="text-sm text-gray-600">Last update: Never</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">X-Axis</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Y-Axis</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Z-Axis</th>
+                        </tr>
+                    </thead>
+                    <tbody id="readings-table-body" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-500">Loading data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 text-center">
+                <button id="refresh-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                    Refresh Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const accXValue = document.getElementById('acc-x-value');
+        const accYValue = document.getElementById('acc-y-value');
+        const accZValue = document.getElementById('acc-z-value');
+        const accXBar = document.getElementById('acc-x-bar');
+        const accYBar = document.getElementById('acc-y-bar');
+        const accZBar = document.getElementById('acc-z-bar');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const lastUpdate = document.getElementById('last-update');
+        const readingsTableBody = document.getElementById('readings-table-body');
+        const refreshBtn = document.getElementById('refresh-btn');
+
+        // Chart configuration
+        const ctx = document.getElementById('accelerometer-chart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'X-Axis',
+                        data: [],
+                        borderColor: 'rgba(59, 130, 246, 0.8)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Y-Axis',
+                        data: [],
+                        borderColor: 'rgba(16, 185, 129, 0.8)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Z-Axis',
+                        data: [],
+                        borderColor: 'rgba(239, 68, 68, 0.8)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second',
+                            displayFormats: {
+                                second: 'HH:mm:ss'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Acceleration (g)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+
+        // Update the progress bars
+        function updateProgressBar(value, element) {
+            // Map from -2g to +2g to 0-100%
+            const percentage = ((value + 2) / 4) * 100;
+            element.style.width = `${Math.min(Math.max(percentage, 0), 100)}%`;
+        }
+
+        // Format timestamp for display
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleTimeString();
+        }
+
+        // Update UI with sensor data
+        function updateUI(data) {
+            // Update accelerometer values
+            accXValue.textContent = data.accelerometer.x.toFixed(3);
+            accYValue.textContent = data.accelerometer.y.toFixed(3);
+            accZValue.textContent = data.accelerometer.z.toFixed(3);
+            
+            // Update progress bars
+            updateProgressBar(data.accelerometer.x, accXBar);
+            updateProgressBar(data.accelerometer.y, accYBar);
+            updateProgressBar(data.accelerometer.z, accZBar);
+            
+            // Update last update time
+            lastUpdate.textContent = `Last update: ${formatTimestamp(data.timestamp)}`;
+            
+            // Update status
+            statusIndicator.className = 'inline-block h-3 w-3 rounded-full bg-green-500';
+            statusText.textContent = 'Connected';
+        }
+
+        // Fetch current sensor data
+        function fetchCurrentData() {
+            statusIndicator.className = 'inline-block h-3 w-3 rounded-full bg-yellow-500';
+            statusText.textContent = 'Updating...';
+            
+            fetch('/api/current')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    updateUI(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching current data:', error);
+                    statusIndicator.className = 'inline-block h-3 w-3 rounded-full bg-red-500';
+                    statusText.textContent = 'Connection Error';
+                });
+        }
+
+        // Load historical data
+        function loadHistoricalData() {
+            fetch('/api/history')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Clear table
+                    readingsTableBody.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td colspan="4" class="px-6 py-4 text-center text-gray-500">No data available</td>`;
+                        readingsTableBody.appendChild(row);
+                    } else {
+                        // Update table with new data
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatTimestamp(item.timestamp)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.accelerometer.x.toFixed(3)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.accelerometer.y.toFixed(3)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.accelerometer.z.toFixed(3)}</td>
+                            `;
+                            readingsTableBody.appendChild(row);
+                        });
+                        
+                        // Update chart
+                        const timestamps = data.map(item => new Date(item.timestamp * 1000)).reverse();
+                        const xValues = data.map(item => item.accelerometer.x).reverse();
+                        const yValues = data.map(item => item.accelerometer.y).reverse();
+                        const zValues = data.map(item => item.accelerometer.z).reverse();
+                        
+                        chart.data.labels = timestamps;
+                        chart.data.datasets[0].data = xValues;
+                        chart.data.datasets[1].data = yValues;
+                        chart.data.datasets[2].data = zValues;
+                        chart.update();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading historical data:', error);
+                    readingsTableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">Error loading data</td></tr>`;
+                });
+        }
+
+        // Set up automatic refresh
+        let refreshInterval;
+
+        function startAutoRefresh() {
+            // Initial fetch
+            fetchCurrentData();
+            loadHistoricalData();
+            
+            // Set up automatic refresh every 1 second
+            refreshInterval = setInterval(() => {
+                fetchCurrentData();
+            }, 1000);
+            
+            // Refresh historical data every 5 seconds
+            setInterval(() => {
+                loadHistoricalData();
+            }, 5000);
+        }
+
+        // Refresh button handler
+        refreshBtn.addEventListener('click', () => {
+            fetchCurrentData();
+            loadHistoricalData();
+        });
+
+        // Start the auto-refresh when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            startAutoRefresh();
+        });
+
+        // Handle page visibility changes to conserve resources
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Page is hidden, stop auto-refresh
+                clearInterval(refreshInterval);
+                statusIndicator.className = 'inline-block h-3 w-3 rounded-full bg-gray-500';
+                statusText.textContent = 'Paused (background)';
+            } else {
+                // Page is visible again, restart auto-refresh
+                startAutoRefresh();
+            }
+        });
+    </script>
+</body>
+</html>
+        <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accelerometer Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+    <style>
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-6">
+        <header class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Accelerometer Dashboard</h1>
+            <p class="text-gray-600">Real-time monitoring of MPU6050 accelerometer data</p
