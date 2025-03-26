@@ -2,13 +2,24 @@ import smbus2 as smbus
 import time
 import math
 import json
+import threading
+import pymysql
+from datetime import datetime
 from flask import Flask, jsonify, render_template
 from flask_socketio import SocketIO
-import threading
 
 # Flask app setup
 app = Flask(__name__, static_folder='static', template_folder='templates')
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# MySQL Database Configuration
+DB_CONFIG = {
+    'host': 'capstonedb.cdgiowwqo0xt.ap-southeast-1.rds.amazonaws.com',
+    'port': 3306,
+    'user': 'admin',
+    'password': 'defarm1234',
+    'database': 'sensor_data'  # We'll create this database if it doesn't exist
+}
 
 # MPU6050 Register Map
 PWR_MGMT_1 = 0x6B
@@ -33,6 +44,77 @@ except Exception as e:
     exit(1)
 
 Device_Address = 0x68  # MPU6050 device address
+
+# Setup MySQL database and tables
+def setup_database():
+    try:
+        # First connect without specifying a database
+        conn = pymysql.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password']
+        )
+        cursor = conn.cursor()
+        
+        # Create database if it doesn't exist
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_CONFIG['database']}")
+        conn.commit()
+        
+        # Close connection
+        cursor.close()
+        conn.close()
+        
+        # Connect to the database
+        conn = pymysql.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database']
+        )
+        cursor = conn.cursor()
+        
+        # Create accelerometer data table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS accelerometer_data (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            timestamp DATETIME,
+            acc_x FLOAT,
+            acc_y FLOAT,
+            acc_z FLOAT
+        )
+        """)
+        
+        # Create a table to store the latest readings
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS latest_reading (
+            id INT PRIMARY KEY DEFAULT 1,
+            timestamp DATETIME,
+            acc_x FLOAT,
+            acc_y FLOAT,
+            acc_z FLOAT
+        )
+        """)
+        
+        # Insert a default record into latest_reading if it doesn't exist
+        cursor.execute("SELECT COUNT(*) FROM latest_reading")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("""
+            INSERT INTO latest_reading (id, timestamp, acc_x, acc_y, acc_z)
+            VALUES (1, NOW(), 0, 0, 0)
+            """)
+        
+        conn.commit()
+        print("Database setup complete")
+        
+        # Close connection
+        cursor.close()
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error setting up database: {e}")
+        exit(1)
 
 # MPU6050 initialization
 def initialize_MPU():
@@ -81,6 +163,99 @@ def read_raw_data(addr):
         print(f"Error reading data from register {hex(addr)}: {e}")
         return 0  # Return zero on error
 
+# Save sensor data to MySQL database
+def save_to_database(acc_x, acc_y, acc_z):
+    try:
+        # Connect to database
+        conn = pymysql.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database']
+        )
+        cursor = conn.cursor()
+        
+        # Insert into accelerometer_data table
+        cursor.execute("""
+        INSERT INTO accelerometer_data (timestamp, acc_x, acc_y, acc_z)
+        VALUES (%s, %s, %s, %s)
+        """, (datetime.now(), acc_x, acc_y, acc_z))
+        
+        # Update latest_reading table
+        cursor.execute("""
+        UPDATE latest_reading
+        SET timestamp = %s, acc_x = %s, acc_y = %s, acc_z = %s
+        WHERE id = 1
+        """, (datetime.now(), acc_x, acc_y, acc_z))
+        
+        conn.commit()
+        
+        # Close connection
+        cursor.close()
+        conn.close()
+        
+        return True
+    except Exception as e:
+        print(f"Error saving to database: {e}")
+        return False
+
+# Retrieve latest sensor data from database
+def get_latest_data():
+    try:
+        # Connect to database
+        conn = pymysql.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database']
+        )
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # Get latest reading
+        cursor.execute("SELECT * FROM latest_reading WHERE id = 1")
+        result = cursor.fetchone()
+        
+        # Close connection
+        cursor.close()
+        conn.close()
+        
+        return result
+    except Exception as e:
+        print(f"Error retrieving latest data: {e}")
+        return None
+
+# Retrieve historical sensor data from database
+def get_historical_data(limit=100):
+    try:
+        # Connect to database
+        conn = pymysql.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database']
+        )
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # Get historical data
+        cursor.execute("""
+        SELECT * FROM accelerometer_data
+        ORDER BY timestamp DESC
+        LIMIT %s
+        """, (limit,))
+        result = cursor.fetchall()
+        
+        # Close connection
+        cursor.close()
+        conn.close()
+        
+        return result
+    except Exception as e:
+        print(f"Error retrieving historical data: {e}")
+        return []
+
 # Function to read sensor data and emit via socket
 def read_sensor():
     print("Starting sensor data reading thread...")
@@ -89,24 +264,15 @@ def read_sensor():
         return
     
     print("Entering sensor reading loop...")
+    sample_count = 0
+    db_save_interval = 10  # Save to DB every 10 readings
+    
     while True:
         try:
             # Read accelerometer data
             acc_x = read_raw_data(ACCEL_XOUT_H) / 16384.0  # Convert to 'g'
             acc_y = read_raw_data(ACCEL_YOUT_H) / 16384.0
             acc_z = read_raw_data(ACCEL_ZOUT_H) / 16384.0
-            
-            # Read gyroscope data
-            gyro_x = read_raw_data(GYRO_XOUT_H) / 131.0  # Convert to degrees/s
-            gyro_y = read_raw_data(GYRO_YOUT_H) / 131.0
-            gyro_z = read_raw_data(GYRO_ZOUT_H) / 131.0
-            
-            # Read temperature data
-            temp = read_raw_data(TEMP_OUT_H) / 340.0 + 36.53  # Convert to celsius
-            
-            # Calculate roll and pitch (in degrees)
-            roll = math.atan2(acc_y, acc_z) * 180 / math.pi
-            pitch = math.atan2(-acc_x, math.sqrt(acc_y**2 + acc_z**2)) * 180 / math.pi
             
             # Create data dictionary
             data = {
@@ -115,25 +281,24 @@ def read_sensor():
                     'x': round(acc_x, 3),
                     'y': round(acc_y, 3),
                     'z': round(acc_z, 3)
-                },
-                'gyroscope': {
-                    'x': round(gyro_x, 3),
-                    'y': round(gyro_y, 3),
-                    'z': round(gyro_z, 3)
-                },
-                'orientation': {
-                    'roll': round(roll, 2),
-                    'pitch': round(pitch, 2)
-                },
-                'temperature': round(temp, 2)
+                }
             }
             
-            # Debug print - comment out after testing
-            print(f"\rAcc: X={acc_x:.2f}g Y={acc_y:.2f}g Z={acc_z:.2f}g | Gyro: X={gyro_x:.2f}°/s Y={gyro_y:.2f}°/s Z={gyro_z:.2f}°/s", end="")
+            # Debug print
+            print(f"\rAcc: X={acc_x:.2f}g Y={acc_y:.2f}g Z={acc_z:.2f}g", end="")
             
             # Emit data via socket
             socketio.emit('sensor_data', data)
-            time.sleep(0.1)  # 10 Hz update rate
+            
+            # Increment counter
+            sample_count += 1
+            
+            # Save to database at specified intervals
+            if sample_count % db_save_interval == 0:
+                save_to_database(acc_x, acc_y, acc_z)
+                print("\nSaved to database")
+            
+            time.sleep(1)  # 1 Hz update rate
             
         except Exception as e:
             print(f"\nError reading sensor data: {e}")
@@ -149,46 +314,31 @@ def index():
 
 @app.route('/api/current')
 def current_data():
-    # For REST API access
-    try:
-        acc_x = read_raw_data(ACCEL_XOUT_H) / 16384.0
-        acc_y = read_raw_data(ACCEL_YOUT_H) / 16384.0
-        acc_z = read_raw_data(ACCEL_ZOUT_H) / 16384.0
-        
-        gyro_x = read_raw_data(GYRO_XOUT_H) / 131.0
-        gyro_y = read_raw_data(GYRO_YOUT_H) / 131.0
-        gyro_z = read_raw_data(GYRO_ZOUT_H) / 131.0
-        
-        temp = read_raw_data(TEMP_OUT_H) / 340.0 + 36.53
-        
-        roll = math.atan2(acc_y, acc_z) * 180 / math.pi
-        pitch = math.atan2(-acc_x, math.sqrt(acc_y**2 + acc_z**2)) * 180 / math.pi
-        
-        data = {
-            'timestamp': time.time(),
+    # Get latest data from database
+    data = get_latest_data()
+    if data:
+        return jsonify({
+            'timestamp': data['timestamp'].timestamp(),
             'accelerometer': {
-                'x': round(acc_x, 3),
-                'y': round(acc_y, 3),
-                'z': round(acc_z, 3)
-            },
-            'gyroscope': {
-                'x': round(gyro_x, 3),
-                'y': round(gyro_y, 3),
-                'z': round(gyro_z, 3)
-            },
-            'orientation': {
-                'roll': round(roll, 2),
-                'pitch': round(pitch, 2)
-            },
-            'temperature': round(temp, 2)
-        }
-        
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({'error': str(e)})
+                'x': data['acc_x'],
+                'y': data['acc_y'],
+                'z': data['acc_z']
+            }
+        })
+    else:
+        return jsonify({'error': 'No data available'})
+
+@app.route('/api/history')
+def history_data():
+    # Get historical data from database
+    data = get_historical_data()
+    return jsonify(data)
 
 if __name__ == '__main__':
-    print("MPU6050 Sensor Dashboard - Starting...")
+    print("MPU6050 Sensor Dashboard with MySQL - Starting...")
+    
+    # Setup database
+    setup_database()
     
     # Check if MPU6050 can be initialized before starting Flask
     try:
