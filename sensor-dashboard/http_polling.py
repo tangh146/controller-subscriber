@@ -18,6 +18,9 @@ DB_CONFIG = {
     'database': 'sensor_data'
 }
 
+# Default to fake data until we confirm sensor works
+USE_FAKE_DATA = False
+
 # MPU6050 Register Map
 PWR_MGMT_1 = 0x6B
 SMPLRT_DIV = 0x19
@@ -34,7 +37,6 @@ try:
     bus = smbus.SMBus(1)
     Device_Address = 0x68  # MPU6050 device address
     print("I2C bus initialized successfully")
-    USE_FAKE_DATA = False
 except Exception as e:
     print(f"Failed to initialize I2C bus: {e}")
     print("Using fake data mode")
@@ -112,6 +114,8 @@ def setup_database():
 
 # MPU6050 initialization
 def initialize_MPU():
+    global USE_FAKE_DATA
+    
     if USE_FAKE_DATA:
         return True
         
@@ -139,12 +143,13 @@ def initialize_MPU():
         return True
     except Exception as e:
         print(f"Failed to initialize MPU6050: {e}")
-        global USE_FAKE_DATA
         USE_FAKE_DATA = True
         return False
 
 # Read raw data from MPU6050
 def read_raw_data(addr):
+    global USE_FAKE_DATA
+    
     if USE_FAKE_DATA:
         import random
         return random.randint(-16384, 16384)
@@ -163,6 +168,7 @@ def read_raw_data(addr):
         return value
     except Exception as e:
         print(f"Error reading data from register {hex(addr)}: {e}")
+        USE_FAKE_DATA = True
         return 0  # Return zero on error
 
 # Save sensor data to MySQL database
@@ -217,6 +223,8 @@ def save_to_database(acc_x, acc_y, acc_z):
 
 # Get latest sensor data (either from sensor or database)
 def get_latest_data(use_sensor=True):
+    global USE_FAKE_DATA
+    
     if use_sensor:
         # Read directly from sensor
         try:
@@ -323,6 +331,8 @@ def get_historical_data(limit=20):
 
 # Background thread to periodically read sensor and save to database
 def sensor_reading_thread():
+    global USE_FAKE_DATA
+    
     print("Starting sensor reading thread")
     
     while True:
@@ -343,6 +353,7 @@ def sensor_reading_thread():
             
         except Exception as e:
             print(f"Error in sensor reading thread: {e}")
+            USE_FAKE_DATA = True
             time.sleep(1)
 
 # Flask routes
@@ -360,6 +371,8 @@ def history_data():
 
 @app.route('/api/status')
 def status():
+    global USE_FAKE_DATA
+    
     return jsonify({
         'status': 'running',
         'using_fake_data': USE_FAKE_DATA,
