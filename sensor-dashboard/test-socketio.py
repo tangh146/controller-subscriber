@@ -42,6 +42,8 @@ except ImportError:
 
 # MPU6050 initialization
 def initialize_MPU():
+    global USE_FAKE_DATA
+    
     if USE_FAKE_DATA:
         print("Using fake data mode - no sensor initialization needed")
         return True
@@ -71,7 +73,6 @@ def initialize_MPU():
     except Exception as e:
         print(f"Failed to initialize MPU6050: {e}")
         print("Switching to fake data mode")
-        global USE_FAKE_DATA
         USE_FAKE_DATA = True
         return False
 
@@ -98,11 +99,12 @@ def read_raw_data(addr):
 
 # Function to read sensor data (or generate fake data) and emit via socket
 def read_sensor():
+    global USE_FAKE_DATA
+    
     print("Starting sensor data reading thread...")
     if not USE_FAKE_DATA:
         if not initialize_MPU():
             print("Failed to initialize MPU6050. Switching to fake data.")
-            global USE_FAKE_DATA
             USE_FAKE_DATA = True
     
     print("Entering sensor reading loop...")
@@ -149,6 +151,8 @@ def index():
 
 @app.route('/api/current')
 def current_data():
+    global USE_FAKE_DATA
+    
     # Get current data - either read from sensor or generate fake data
     if USE_FAKE_DATA:
         acc_x = random.uniform(-1.0, 1.0)
@@ -171,6 +175,8 @@ def current_data():
 
 @app.route('/api/status')
 def status():
+    global USE_FAKE_DATA
+    
     return jsonify({
         'status': 'running',
         'using_fake_data': USE_FAKE_DATA,
