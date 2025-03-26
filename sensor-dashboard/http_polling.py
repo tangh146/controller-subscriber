@@ -395,4 +395,4 @@ if __name__ == '__main__':
     
     # Start the Flask app
     print("Server starting at http://0.0.0.0:5000")
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=6000, debug=False, threaded=True)
