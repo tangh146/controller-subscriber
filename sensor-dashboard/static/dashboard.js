@@ -8,8 +8,8 @@ let dataHistory = {
     accelerometer: { x: [], y: [], z: [] }
 };
 
-// Maximum data points to keep in history
-const MAX_HISTORY_LENGTH = 100;
+// Maximum data points to keep in history (matching the database limit)
+const MAX_HISTORY_LENGTH = 20;
 
 // DOM elements
 const elements = {

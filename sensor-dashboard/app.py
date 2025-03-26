@@ -189,6 +189,18 @@ def save_to_database(acc_x, acc_y, acc_z):
         WHERE id = 1
         """, (datetime.now(), acc_x, acc_y, acc_z))
         
+        # Limit table to the most recent 20 entries
+        cursor.execute("""
+        DELETE FROM accelerometer_data 
+        WHERE id NOT IN (
+            SELECT id FROM (
+                SELECT id FROM accelerometer_data 
+                ORDER BY timestamp DESC 
+                LIMIT 20
+            ) AS latest_20
+        )
+        """)
+        
         conn.commit()
         
         # Close connection
@@ -227,7 +239,7 @@ def get_latest_data():
         return None
 
 # Retrieve historical sensor data from database
-def get_historical_data(limit=100):
+def get_historical_data(limit=20):
     try:
         # Connect to database
         conn = pymysql.connect(
@@ -239,7 +251,7 @@ def get_historical_data(limit=100):
         )
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
-        # Get historical data
+        # Get historical data - limited to most recent 20 entries
         cursor.execute("""
         SELECT * FROM accelerometer_data
         ORDER BY timestamp DESC
