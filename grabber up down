@@ -1,0 +1,78 @@
+#include <Servo.h>
+
+Servo s1;
+Servo s2;
+
+int lowAngle = 0;    // Default low angle
+int highAngle = 90;  // Default high angle
+int currentPos = lowAngle; // Current position (based on servo1's perspective)
+
+const int speedDelay = 50; // Reduced delay (ms) for faster movement
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Servo Control Ready.");
+  Serial.println("Send 'U' for up, 'D' for down, 'R' to redefine angles.");
+
+  s1.attach(10);  // Attach servo1 to pin 10
+  s2.attach(11);  // Attach servo2 to pin 11
+
+  // Initialize servos
+  s1.write(currentPos);
+  // For servo2, invert the command to move in the same physical direction:
+  s2.write(highAngle + lowAngle - currentPos);
+  Serial.print("Current position: ");
+  Serial.println(currentPos);
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    char cmd = Serial.read();
+    if (cmd == 'U') {
+      Serial.println("Moving up...");
+      // Move upward from currentPos to highAngle
+      for (int i = currentPos; i <= highAngle; i++) {
+        s1.write(i);
+        s2.write(highAngle + lowAngle - i);
+        delay(speedDelay);
+      }
+      currentPos = highAngle;
+      Serial.print("Reached up at: ");
+      Serial.println(currentPos);
+    }
+    else if (cmd == 'D') {
+      Serial.println("Moving down...");
+      // Move downward from currentPos to lowAngle
+      for (int i = currentPos; i >= lowAngle; i--) {
+        s1.write(i);
+        s2.write(highAngle + lowAngle - i);
+        delay(speedDelay);
+      }
+      currentPos = lowAngle;
+      Serial.print("Reached down at: ");
+      Serial.println(currentPos);
+    }
+    else if (cmd == 'R') {
+      Serial.println("Redefining angles...");
+      Serial.println("Enter new low angle (0-180): ");
+      while (Serial.available() == 0) { }
+      lowAngle = Serial.parseInt();
+      Serial.print("New low angle: ");
+      Serial.println(lowAngle);
+
+      Serial.println("Enter new high angle (0-180): ");
+      while (Serial.available() == 0) { }
+      highAngle = Serial.parseInt();
+      Serial.print("New high angle: ");
+      Serial.println(highAngle);
+
+      // Adjust currentPos if it's out of range
+      if (currentPos < lowAngle) currentPos = lowAngle;
+      if (currentPos > highAngle) currentPos = highAngle;
+      s1.write(currentPos);
+      s2.write(highAngle + lowAngle - currentPos);
+      Serial.print("Angles redefined. Current position set to: ");
+      Serial.println(currentPos);
+    }
+  }
+}
