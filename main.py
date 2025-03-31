@@ -16,8 +16,7 @@ def on_purchase(pots_away):
     print(f"RECEIVED MESSAGE = {pots_away}")
 
     smotor()
-    for i in range(pots_away):
-
+    worm.rotate_degrees(2335)
     
 
 
