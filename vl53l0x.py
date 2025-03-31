@@ -117,10 +117,53 @@ def get_distance():
         data = read_block_data(REG_RESULT_RANGE_STATUS, 12)
         range_mm = (data[10] << 8) | data[11]
         
+        # Validate the reading (typical valid range is 30mm to 2000mm for VL53L0X)
+        if range_mm < 30 or range_mm > 2000:
+            # Out of reliable range, might be an error
+            # Just print a warning but return the value anyway as it might be legitimate
+            if range_mm != 0:  # Don't warn for zero values which usually mean no target detected
+                print(f"Warning: Unusual distance reading: {range_mm}mm")
+        
         return range_mm
     except Exception as e:
         print(f"Error getting distance: {e}")
         return -1
+
+def test_sensor(num_readings=5, delay=0.5):
+    """
+    Test if the sensor is providing reliable readings.
+    Returns True if sensor appears to be working correctly.
+    """
+    print(f"Testing VL53L0X sensor with {num_readings} readings...")
+    valid_readings = 0
+    readings = []
+    
+    for i in range(num_readings):
+        distance = get_distance()
+        readings.append(distance)
+        
+        if distance > 0:
+            valid_readings += 1
+            
+        print(f"Reading {i+1}: {distance}mm ({distance/10:.1f}cm)")
+        time.sleep(delay)
+    
+    reliability = (valid_readings / num_readings) * 100
+    print(f"Sensor reliability: {reliability:.1f}% ({valid_readings}/{num_readings} valid readings)")
+    
+    # Check for wild variations which could indicate problems
+    if len(readings) > 1 and valid_readings > 1:
+        valid_values = [r for r in readings if r > 0]
+        if len(valid_values) >= 2:
+            max_diff = max(valid_values) - min(valid_values)
+            avg = sum(valid_values) / len(valid_values)
+            variation = (max_diff / avg) * 100
+            
+            print(f"Variation in readings: {variation:.1f}%")
+            if variation > 50:
+                print("Warning: High variation in sensor readings")
+    
+    return reliability > 60  # Consider the sensor working if > 60% of readings are valid
 
 def cleanup_sensor():
     """Clean up the I2C bus."""
