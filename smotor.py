@@ -38,7 +38,7 @@ class TB6600StepperMotor:
     def initialize_l298n_motor(self):
         """Initialize the L298N motor controller"""
         # Define pins for L298N motor controller
-        ENABLE_PIN = 18  # PWM pin
+        ENABLE_PIN = 22  # PWM pin
         IN1_PIN = 23     # Direction control 1
         IN2_PIN = 24     # Direction control 2
         ENCODER_A_PIN = 17  # Encoder channel A
@@ -50,35 +50,41 @@ class TB6600StepperMotor:
                                                ENCODER_A_PIN, ENCODER_B_PIN, STEPS_PER_REV)
         return self.l298n_motor
         
-    def move(self):
-        """Run the TB6600 stepper motor first, then the L298N motor if initialized"""
-        print("TB6600: Running stepper motor for 1 revolution slowly...")
-        self.rotate_revolutions(1, delay=0.001)
+    def move(self, l298n_rotation_angle=None):
+        """
+        Run the TB6600 stepper motor first, then the L298N motor if initialized.
         
-        time.sleep(1)
+        Args:
+            l298n_rotation_angle (float, optional): The angle in degrees to rotate the L298N motor.
+                                                    If None, the L298N motor will not rotate.
+        """
+        print("TB6600: Running stepper motor for 1 revolution slowly...")
+        #self.rotate_revolutions(1, delay=0.001)
+        
+        #time.sleep(1)
         
         print("TB6600: Running stepper motor for 180 degrees quickly...")
-        self.rotate_degrees(180, delay=0.0003)
+        #self.rotate_degrees(180, delay=0.0003)
         
-        time.sleep(1)
+        #time.sleep(1)
         
-        print("TB6600: Running stepper motor for 1000 steps...")
-        self.step(1000, delay=0.0005)
+        #print("TB6600: Running stepper motor for 1000 steps...")
+        #self.step(1000, delay=0.0005)
         
-        # If L298N motor is initialized, run it after the stepper motor
-        if self.l298n_motor is not None:
+        # If L298N motor is initialized and a rotation angle is provided, run it
+        if self.l298n_motor is not None and l298n_rotation_angle is not None:
             time.sleep(1)
-            print("L298N: Starting DC motor rotations...")
+            print(f"L298N: Starting DC motor rotations for {l298n_rotation_angle} degrees...")
             
             # Perform rotations with the L298N motor
-            for i in range(2):  # Reduced to 2 cycles for faster execution
-                print(f"L298N: Rotation {i+1}: 60 degrees clockwise")
-                self.l298n_motor.rotate_degrees(60, speed=60, clockwise=True)
+            for i in range(1):  # Reduced to 2 cycles for faster execution
+                print(f"L298N: Rotation {i+1}: {l298n_rotation_angle} degrees clockwise")
+                self.l298n_motor.rotate_degrees(l298n_rotation_angle, speed=60, clockwise=False)
                 time.sleep(0.5)
                 
-                print(f"L298N: Rotation {i+1}: 60 degrees counter-clockwise")
-                self.l298n_motor.rotate_degrees(60, speed=60, clockwise=False)
-                time.sleep(0.5)
+                #print(f"L298N: Rotation {i+1}: {l298n_rotation_angle} degrees counter-clockwise")
+                #self.l298n_motor.rotate_degrees(l298n_rotation_angle, speed=60, clockwise=False)
+                #time.sleep(0.5)
     
     def enable(self):
         """Enable the motor driver if an enable pin is connected."""
@@ -179,31 +185,35 @@ class L298NMotorController:
     
     def read_encoder(self):
         """
-        Read encoder position using polling method instead of interrupts
-        Should be called frequently in a loop
+        Read encoder position using quadrature decoding with polling.
         """
         a_state = GPIO.input(self.encoder_a_pin)
-        
-        if self.encoder_b_pin:
-            b_state = GPIO.input(self.encoder_b_pin)
-            
-            # Determine direction based on the state of both channels
-            if a_state != self.last_encoder_a:
-                # If A changed
-                if a_state == 1 and self.last_encoder_a == 0:  # Rising edge on A
-                    if b_state == 0:  # B is low
-                        self.position += 1
-                    else:  # B is high
-                        self.position -= 1
-            
-            self.last_encoder_a = a_state
-            self.last_encoder_b = b_state
-        else:
-            # Simple encoder (no direction detection)
+        if self.encoder_b_pin is None:
+            # Simple encoder (only channel A)
             if a_state == 1 and self.last_encoder_a == 0:  # Rising edge
                 self.position += 1
-            
             self.last_encoder_a = a_state
+        else:
+            b_state = GPIO.input(self.encoder_b_pin)
+            current_state = (a_state << 1) | b_state
+            prev_state = (self.last_encoder_a << 1) | self.last_encoder_b
+            
+            # Define valid transitions for quadrature decoding
+            transition = (prev_state << 2) | current_state
+            
+            # Clockwise transitions (from datasheet or encoder spec)
+            cw_transitions = {0b0001, 0b0111, 0b1110, 0b1000}
+            # Counter-clockwise transitions
+            ccw_transitions = {0b0010, 0b1011, 0b1101, 0b0100}
+            
+            if transition in cw_transitions:
+                self.position += 1
+            elif transition in ccw_transitions:
+                self.position -= 1
+            
+            # Update previous states
+            self.last_encoder_a = a_state
+            self.last_encoder_b = b_state
     
     def set_direction(self, clockwise=True):
         """Set the direction of motor rotation"""
@@ -233,13 +243,11 @@ class L298NMotorController:
     
     def rotate_degrees(self, degrees, speed=50, clockwise=True):
         """
-        Rotate the motor by a specific number of degrees
-        
-        Args:
-            degrees: Number of degrees to rotate
-            speed: Motor speed (0-100)
-            clockwise: Direction of rotation
+        Rotate the motor by a specific number of degrees with timeout.
         """
+        start_time = time.time()
+        timeout = 5  # seconds (adjust based on expected max duration)
+        
         # Calculate target position
         target_steps = int((degrees / 360) * self.steps_per_revolution)
         start_position = self.position
@@ -258,14 +266,21 @@ class L298NMotorController:
         
         # Wait until we've moved close to the desired position
         while True:
+            if time.time() - start_time > timeout:
+                print("Timeout reached. Stopping motor.")
+                self.stop()
+                break
+            
             # Read encoder
             self.read_encoder()
+            print(f"Current Pos: {self.position}, Target: {target_position}")
             
             # Calculate remaining distance
             remaining_steps = abs(target_position - self.position)
             
             # If we've reached target, stop
             if remaining_steps <= 1:
+                print("Target reached. Stopping motor.")
                 break
                 
             # Slow down as we approach target for better precision
@@ -278,6 +293,7 @@ class L298NMotorController:
             # Check if we've gone too far (compensate for overshoot)
             if (clockwise and self.position > target_position) or (not clockwise and self.position < target_position):
                 # Reverse direction briefly to correct
+                print("Overshoot detected! Breaking the loop...")
                 self.set_direction(not clockwise)
                 self.set_speed(min_speed)
                 time.sleep(0.05)
@@ -322,7 +338,8 @@ if __name__ == "__main__":
         stepper_motor.initialize_l298n_motor()
         
         # Move both motors in sequence (TB6600 first, then L298N)
-        stepper_motor.move()
+        # Specify the rotation angle for the L298N motor (e.g., 90 degrees)
+        stepper_motor.move(l298n_rotation_angle=90)
         
     except KeyboardInterrupt:
         print("\nProgram stopped by user")
