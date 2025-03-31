@@ -111,7 +111,7 @@ if __name__ == "__main__":
    import time
    import pigpio
 
-   import rotary_encoder
+   import worm.rotary_encoder as rotary_encoder
 
    pos = 0
 
