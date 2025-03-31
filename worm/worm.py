@@ -1,4 +1,4 @@
-import worm.rotary_encoder as rotary_encoder
+import rotary_encoder as rotary_encoder
 import pigpio
 import RPi.GPIO as GPIO
 import time
