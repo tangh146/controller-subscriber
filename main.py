@@ -14,11 +14,10 @@ load_dotenv()
 @ee.on("purchase")
 def on_purchase(pots_away):
     print(f"RECEIVED MESSAGE = {pots_away}")
-    
-    if get_distance() > 20:
-        smotor()
-        for i in range(pots_away):
-            worm.rotate_degrees(2335)
+
+    smotor()
+    for i in range(pots_away):
+
     
 
 
