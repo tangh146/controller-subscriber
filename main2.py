@@ -13,7 +13,7 @@ from vl53l0x import initialize_sensor, get_distance, cleanup_sensor
 load_dotenv()
 
 # Target distance to stop at (in centimeters)
-TARGET_DISTANCE_CM = 200
+TARGET_DISTANCE_CM = 20
 
 # Initialize devices
 sensor_initialized = False
@@ -98,11 +98,16 @@ if __name__ == "__main__":
             sys.exit(1)
         
         # Test the distance sensor
-        current_distance = get_distance()
-        if current_distance > 0:
-            print(f"Distance sensor test: {current_distance/10.0:.1f}cm")
-        else:
-            print("WARNING: Distance sensor not working properly")
+        print("Testing initial distance readings...")
+        for i in range(3):
+            current_distance = get_distance()
+            print(f"Test reading {i+1}: {current_distance/10.0:.1f}cm")
+            # If we're getting very small values at startup, something is wrong
+            if 0 < current_distance < 100:  # Less than 10cm at startup is suspicious
+                print("WARNING: Distance sensor reporting very close readings at startup.")
+                print("This likely indicates a sensor configuration issue.")
+                print("Proceeding anyway, but dispensing might not work properly.")
+            time.sleep(0.5)
         
         # Connect to MQTT broker
         broker_host = os.getenv("MQTT_HOST")

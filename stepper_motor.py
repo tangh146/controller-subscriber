@@ -108,6 +108,26 @@ def dispense_until_distance(target_distance_cm, max_steps=3200, speed_rpm=10, cl
     target_distance_mm = target_distance_cm * 10
     
     try:
+        # Check initial distance reading
+        initial_distance = get_distance_func()
+        initial_distance_cm = initial_distance / 10.0
+        print(f"Initial distance reading: {initial_distance_cm:.1f}cm")
+        
+        # If we're already detecting a very close distance at startup,
+        # there might be a sensor issue - force the motor to move anyway
+        force_movement = False
+        if 0 < initial_distance < 100:  # Less than 10cm
+            print(f"WARNING: Very close initial distance ({initial_distance_cm:.1f}cm) detected.")
+            print("This may indicate a sensor error. Forcing motor movement.")
+            force_movement = True
+            # Take a few more readings to see if they're consistent
+            readings = []
+            for i in range(3):
+                readings.append(get_distance_func())
+                time.sleep(0.1)
+            if all(r < 100 for r in readings if r > 0):
+                print("Multiple suspicious readings confirmed. Sensor may need calibration.")
+            
         # Set direction
         GPIO.output(DIR_PIN, GPIO.HIGH if clockwise else GPIO.LOW)
         
@@ -120,18 +140,26 @@ def dispense_until_distance(target_distance_cm, max_steps=3200, speed_rpm=10, cl
         target_reached = False
         
         # Generate pulses until target distance is reached or max steps are taken
+        # Force a minimum number of steps if we had a suspicious initial reading
+        min_steps = 100 if force_movement else 0
+        
         while steps_taken < max_steps:
+            # Always move a minimum number of steps if forced
+            if steps_taken < min_steps:
+                must_continue = True
+            else:
+                must_continue = False
+                
             # Check distance
             current_distance_mm = get_distance_func()
             current_distance_cm = current_distance_mm / 10.0
             
             # Print distance every 50 steps
-            if steps_taken % 50 == 0:
+            if steps_taken % 50 == 0 or steps_taken < 5:
                 print(f"Current distance: {current_distance_cm:.1f}cm (Step {steps_taken})")
             
-            # Make sure we have a valid reading (not -1 or unrealistically small values)
-            # And ensure consistent readings by requiring 3 consecutive measurements below threshold
-            if current_distance_mm > 10 and current_distance_mm <= target_distance_mm:
+            # Check if target reached - but only after min_steps
+            if not must_continue and current_distance_mm > 10 and current_distance_mm <= target_distance_mm:
                 # Verify with additional readings
                 confirmation_count = 1
                 needed_confirmations = 3
@@ -144,7 +172,7 @@ def dispense_until_distance(target_distance_cm, max_steps=3200, speed_rpm=10, cl
                 
                 # Only consider target reached if we have enough confirmations
                 if confirmation_count >= needed_confirmations:
-                    print(f"Target distance confirmed: {current_distance_cm:.1f}cm")
+                    print(f"Target distance confirmed: {current_distance_cm:.1f}cm after {steps_taken} steps")
                     target_reached = True
                     break
                 else:
