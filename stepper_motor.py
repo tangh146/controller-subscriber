@@ -129,11 +129,31 @@ def dispense_until_distance(target_distance_cm, max_steps=3200, speed_rpm=10, cl
             if steps_taken % 50 == 0:
                 print(f"Current distance: {current_distance_cm:.1f}cm (Step {steps_taken})")
             
-            # Check if target reached
-            if current_distance_mm > 0 and current_distance_mm <= target_distance_mm:
-                print(f"Target distance reached: {current_distance_cm:.1f}cm")
-                target_reached = True
-                break
+            # Make sure we have a valid reading (not -1 or unrealistically small values)
+            # And ensure consistent readings by requiring 3 consecutive measurements below threshold
+            if current_distance_mm > 10 and current_distance_mm <= target_distance_mm:
+                # Verify with additional readings
+                confirmation_count = 1
+                needed_confirmations = 3
+                
+                for _ in range(needed_confirmations - 1):
+                    time.sleep(0.05)  # Short delay between readings
+                    verify_distance = get_distance_func()
+                    if verify_distance > 10 and verify_distance <= target_distance_mm:
+                        confirmation_count += 1
+                
+                # Only consider target reached if we have enough confirmations
+                if confirmation_count >= needed_confirmations:
+                    print(f"Target distance confirmed: {current_distance_cm:.1f}cm")
+                    target_reached = True
+                    break
+                else:
+                    print(f"False positive detected. Continuing...")
+            
+            # If distance is invalid, retry
+            if current_distance_mm <= 0:
+                print("Invalid distance reading, retrying...")
+                continue
             
             # Pulse the stepper
             GPIO.output(PUL_PIN, GPIO.HIGH)
