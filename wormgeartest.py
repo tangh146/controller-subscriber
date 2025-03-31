@@ -1,147 +1,6 @@
 import RPi.GPIO as GPIO
 import time
-
-class TB6600StepperMotor:
-    def __init__(self, pulse_pin, dir_pin, enable_pin=None, steps_per_rev=4800, microstepping=1):
-        """
-        Initialize the TB6600 stepper motor driver.
-        
-        Args:
-            pulse_pin (int): GPIO pin connected to the PUL+ pin on TB6600
-            dir_pin (int): GPIO pin connected to the DIR+ pin on TB6600
-            enable_pin (int, optional): GPIO pin connected to the ENA+ pin on TB6600
-            steps_per_rev (int): Number of steps per revolution (defaults to 200)
-            microstepping (int): Microstepping setting on the TB6600 (1, 2, 4, 8, 16, or 32)
-        """
-        self.pulse_pin = pulse_pin
-        self.dir_pin = dir_pin
-        self.enable_pin = enable_pin
-        self.steps_per_rev = steps_per_rev
-        self.microstepping = microstepping
-        
-        # Setup GPIO
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.pulse_pin, GPIO.OUT)
-        GPIO.setup(self.dir_pin, GPIO.OUT)
-        
-        # Set direction to a default value (clockwise in this case)
-        GPIO.output(self.dir_pin, GPIO.HIGH)
-        
-        if self.enable_pin is not None:
-            GPIO.setup(self.enable_pin, GPIO.OUT)
-            # Enable the driver (active low)
-            GPIO.output(self.enable_pin, GPIO.LOW)
-        
-        # Initialize the L298N motor controller as well
-        self.l298n_motor = None
-    
-    def initialize_l298n_motor(self):
-        """Initialize the L298N motor controller"""
-        # Define pins for L298N motor controller
-        ENABLE_PIN = 22  # PWM pin
-        IN1_PIN = 23     # Direction control 1
-        IN2_PIN = 24     # Direction control 2
-        ENCODER_A_PIN = 17  # Encoder channel A
-        ENCODER_B_PIN = 27  # Encoder channel B
-        STEPS_PER_REV = 360  # Adjust based on your encoder's resolution
-        
-        # Create the L298N motor controller instance
-        self.l298n_motor = L298NMotorController(ENABLE_PIN, IN1_PIN, IN2_PIN, 
-                                               ENCODER_A_PIN, ENCODER_B_PIN, STEPS_PER_REV)
-        return self.l298n_motor
-        
-    def move(self, l298n_rotation_angle=None):
-        """
-        Run the TB6600 stepper motor first, then the L298N motor if initialized.
-        
-        Args:
-            l298n_rotation_angle (float, optional): The angle in degrees to rotate the L298N motor.
-                                                    If None, the L298N motor will not rotate.
-        """
-        print("TB6600: Running stepper motor for 1 revolution slowly...")
-        #self.rotate_revolutions(1, delay=0.001)
-        
-        #time.sleep(1)
-        
-        print("TB6600: Running stepper motor for 180 degrees quickly...")
-        #self.rotate_degrees(180, delay=0.0003)
-        
-        #time.sleep(1)
-        
-        #print("TB6600: Running stepper motor for 1000 steps...")
-        #self.step(1000, delay=0.0005)
-        
-        # If L298N motor is initialized and a rotation angle is provided, run it
-        if self.l298n_motor is not None and l298n_rotation_angle is not None:
-            time.sleep(1)
-            print(f"L298N: Starting DC motor rotations for {l298n_rotation_angle} degrees...")
-            
-            # Perform rotations with the L298N motor
-            for i in range(1):  # Reduced to 2 cycles for faster execution
-                print(f"L298N: Rotation {i+1}: {l298n_rotation_angle} degrees clockwise")
-                self.l298n_motor.rotate_degrees(l298n_rotation_angle, speed=60, clockwise=False)
-                time.sleep(0.5)
-                
-                #print(f"L298N: Rotation {i+1}: {l298n_rotation_angle} degrees counter-clockwise")
-                #self.l298n_motor.rotate_degrees(l298n_rotation_angle, speed=60, clockwise=False)
-                #time.sleep(0.5)
-    
-    def enable(self):
-        """Enable the motor driver if an enable pin is connected."""
-        if self.enable_pin is not None:
-            GPIO.output(self.enable_pin, GPIO.LOW)
-    
-    def disable(self):
-        """Disable the motor driver if an enable pin is connected."""
-        if self.enable_pin is not None:
-            GPIO.output(self.enable_pin, GPIO.HIGH)
-    
-    def step(self, steps, delay=0.0005):
-        """
-        Move the motor a specified number of steps.
-        
-        Args:
-            steps (int): Number of steps to move
-            delay (float): Delay between pulses in seconds (controls speed)
-        """
-        for _ in range(steps):
-            GPIO.output(self.pulse_pin, GPIO.HIGH)
-            time.sleep(delay)
-            GPIO.output(self.pulse_pin, GPIO.LOW)
-            time.sleep(delay)
-    
-    def rotate_degrees(self, degrees, delay=0.0005):
-        """
-        Rotate the motor by a specified angle in degrees.
-        
-        Args:
-            degrees (float): The angle to rotate in degrees
-            delay (float): Delay between pulses in seconds (controls speed)
-        """
-        steps = int((degrees / 360.0) * self.steps_per_rev * self.microstepping)
-        self.step(steps, delay)
-    
-    def rotate_revolutions(self, revolutions, delay=0.0005):
-        """
-        Rotate the motor by a specified number of revolutions.
-        
-        Args:
-            revolutions (float): The number of revolutions to rotate
-            delay (float): Delay between pulses in seconds (controls speed)
-        """
-        steps = int(revolutions * self.steps_per_rev * self.microstepping)
-        self.step(steps, delay)
-    
-    def cleanup(self):
-        """Clean up GPIO resources."""
-        if self.enable_pin is not None:
-            self.disable()
-        # Also clean up L298N motor if initialized
-        if self.l298n_motor is not None:
-            self.l298n_motor.cleanup()
-        else:
-            GPIO.cleanup()
-
+import keyboard  # Requires 'keyboard' library (install with pip)
 
 class L298NMotorController:
     def __init__(self, enable_pin, in1_pin, in2_pin, encoder_a_pin, encoder_b_pin=None, steps_per_revolution=360):
@@ -182,7 +41,7 @@ class L298NMotorController:
         GPIO.setup(self.encoder_a_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         if self.encoder_b_pin:
             GPIO.setup(self.encoder_b_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    
+
     def read_encoder(self):
         """
         Read encoder position using quadrature decoding with polling.
@@ -214,7 +73,7 @@ class L298NMotorController:
             # Update previous states
             self.last_encoder_a = a_state
             self.last_encoder_b = b_state
-    
+
     def set_direction(self, clockwise=True):
         """Set the direction of motor rotation"""
         if clockwise:
@@ -223,7 +82,7 @@ class L298NMotorController:
         else:
             GPIO.output(self.in1_pin, GPIO.LOW)
             GPIO.output(self.in2_pin, GPIO.HIGH)
-    
+
     def set_speed(self, speed):
         """Set the speed of the motor (0-100)"""
         if speed < 0:
@@ -231,7 +90,7 @@ class L298NMotorController:
         elif speed > 100:
             speed = 100
         self.pwm.ChangeDutyCycle(speed)
-    
+
     def stop(self):
         """Stop the motor"""
         self.pwm.ChangeDutyCycle(0)
@@ -239,14 +98,14 @@ class L298NMotorController:
     def cleanup(self):
         """Clean up GPIO pins"""
         self.pwm.stop()
-        # Note: We don't call GPIO.cleanup() here to avoid conflicts with the TB6600 motor
-    
+        GPIO.cleanup()
+
     def rotate_degrees(self, degrees, speed=50, clockwise=True):
         """
         Rotate the motor by a specific number of degrees with timeout.
         """
         start_time = time.time()
-        timeout = 5  # seconds (adjust based on expected max duration)
+        timeout = 1000  # seconds (adjust based on expected max duration)
         
         # Calculate target position
         target_steps = int((degrees / 360) * self.steps_per_revolution)
@@ -318,31 +177,50 @@ class L298NMotorController:
         return self.position - start_position  # Return actual steps moved
 
 
-# Example usage
 if __name__ == "__main__":
     try:
-        # Define pins connected to TB6600
-        PULSE_PIN = 20  # GPIO pin connected to PUL+
-        DIR_PIN = 21    # GPIO pin connected to DIR+
+        # Configuration - Update these values to match your wiring!
+        ENABLE_PIN = 22   # PWM pin
+        IN1_PIN = 23      # Direction control 1
+        IN2_PIN = 24      # Direction control 2
+        ENCODER_A_PIN = 17  # Encoder channel A
+        ENCODER_B_PIN = 27  # Encoder channel B
+        STEPS_PER_REV = 360  # Adjust based on your encoder's resolution
         
-        # Create stepper motor instance
-        stepper_motor = TB6600StepperMotor(
-            pulse_pin=PULSE_PIN,
-            dir_pin=DIR_PIN,
-            enable_pin=None,  # Not using the enable pin
-            steps_per_rev=4800,
-            microstepping=16
+        rotate_degrees = 1000  # Set desired rotation angle
+        motor_speed = 60     # Set motor speed (0-100)
+
+        # Initialize motor controller
+        motor = L298NMotorController(
+            enable_pin=ENABLE_PIN,
+            in1_pin=IN1_PIN,
+            in2_pin=IN2_PIN,
+            encoder_a_pin=ENCODER_A_PIN,
+            encoder_b_pin=ENCODER_B_PIN,
+            steps_per_revolution=STEPS_PER_REV
         )
-        
-        # Initialize and connect the L298N motor
-        stepper_motor.initialize_l298n_motor()
-        
-        # Move both motors in sequence (TB6600 first, then L298N)
-        # Specify the rotation angle for the L298N motor (e.g., 90 degrees)
-        stepper_motor.move(l298n_rotation_angle=90)
-        
+
+        print(f"Press 'r' to rotate CCW by {rotate_degrees} degrees")
+        print("Press 'q' to quit")
+
+        while True:
+            if keyboard.is_pressed('r'):
+                print("\nRotating Counter-Clockwise...")
+                motor.rotate_degrees(
+                    degrees=rotate_degrees,
+                    speed=motor_speed,
+                    clockwise=False  # CCW rotation
+                )
+                # Wait for key release
+                while keyboard.is_pressed('r'):
+                    time.sleep(0.1)
+            elif keyboard.is_pressed('q'):
+                print("\nExiting...")
+                break
+            time.sleep(0.1)
+
     except KeyboardInterrupt:
         print("\nProgram stopped by user")
     finally:
-        if 'stepper_motor' in locals():
-            stepper_motor.cleanup()
+        if 'motor' in locals():
+            motor.cleanup()
