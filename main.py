@@ -3,9 +3,8 @@ import os
 from subscriber import ee, start_subscriber
 import RPi.GPIO as GPIO          
 from time import sleep
-from smotor2 import main as smotor
 from worm import Worm
-from tof import get_distance
+from nema import run_nema
 
 # Load environment variables
 load_dotenv()
@@ -14,9 +13,10 @@ load_dotenv()
 @ee.on("purchase")
 def on_purchase(pots_away):
     print(f"RECEIVED MESSAGE = {pots_away}")
-
-    smotor()
-    worm.rotate_degrees(2335)
+    
+    run_nema()
+    for i in range(pots_away):
+        worm.rotate_degrees(2335)
     
 
 

@@ -89,7 +89,7 @@ def step_motor(steps):
         time.sleep(STEP_DELAY)
 
 # Main function
-def main():
+def run_nema():
     try:
         # Setup
         setup_gpio()
