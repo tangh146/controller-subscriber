@@ -13,7 +13,7 @@ from vl53l0x import initialize_sensor, get_distance, cleanup_sensor
 load_dotenv()
 
 # Target distance to stop at (in centimeters)
-TARGET_DISTANCE_CM = 20
+TARGET_DISTANCE_CM = 200
 
 # Initialize devices
 sensor_initialized = False
