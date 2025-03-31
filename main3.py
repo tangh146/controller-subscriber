@@ -1,78 +1,130 @@
 #!/usr/bin/env python3
 """
-main.py - Combines stepper motor control with ToF distance sensor
-Functionality:
-- Runs the stepper motor continuously
-- Stops the motor when an object is detected at 20cm or closer
+Raspberry Pi Stepper Motor Control with VL53L0X Distance Sensor
+- Controls a stepper motor via TB6600 driver (DIR+/PUL+)
+- Stops motor when VL53L0X detects distance > 20cm
+- 32 microstep setting, 6400 pulses per revolution
+- Uses smbus2 for I2C communication with VL53L0X
 """
 
+import RPi.GPIO as GPIO
 import time
-import argparse
-# Import functions from stepper motor and ToF sensor files
-from smotor2 import setup, rotate_degrees, cleanup
-from tof import initialize_sensor, get_distance
+from smbus2 import SMBus
 
-# Configuration
-DISTANCE_THRESHOLD = 20.0  # in cm (20cm threshold as specified)
-MOTOR_SPEED = 10.0  # RPM
-CHECK_INTERVAL = 0.1  # seconds between distance checks while motor is running
-MOTOR_STEP_ANGLE = 10.0  # degrees to rotate per step (smaller value = more frequent checks)
+# Pin definitions
+DIR_PIN = 20    # Direction pin (DIR+)
+PUL_PIN = 21    # Pulse pin (PUL+)
+DISTANCE_THRESHOLD = 200  # 20cm in mm
 
-def main():
-    """
-    Main function that controls the motor based on distance sensor readings
-    """
-    parser = argparse.ArgumentParser(description='Control stepper motor based on ToF sensor')
+# VL53L0X parameters
+VL53L0X_ADDR = 0x29
+VL53L0X_REG_ID = 0xC0
+VL53L0X_REG_SYSRANGE_START = 0x00
+VL53L0X_REG_RESULT_RANGE_STATUS = 0x14
+I2C_BUS = 1  # Raspberry Pi 4B uses I2C bus 1
+
+# Motor parameters
+STEP_DELAY = 0.0001  # Adjust for desired speed
+DIRECTION = 1        # 1 for clockwise, 0 for counterclockwise
+
+# Initialize GPIO
+def setup_gpio():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(DIR_PIN, GPIO.OUT)
+    GPIO.setup(PUL_PIN, GPIO.OUT)
+    GPIO.output(DIR_PIN, DIRECTION)
+    print("GPIO initialized")
+
+# Initialize VL53L0X sensor
+def setup_sensor():
+    bus = SMBus(I2C_BUS)
     
-    # Add arguments
-    parser.add_argument('-s', '--speed', type=float, default=MOTOR_SPEED,
-                      help=f'Motor speed in RPM (default: {MOTOR_SPEED})')
-    parser.add_argument('-c', '--clockwise', action='store_true',
-                      help='Rotate clockwise (default: counterclockwise)')
-    parser.add_argument('-t', '--threshold', type=float, default=DISTANCE_THRESHOLD,
-                      help=f'Distance threshold in cm (default: {DISTANCE_THRESHOLD})')
-    
-    args = parser.parse_args()
-    
+    # Check if sensor is present
     try:
-        # Initialize stepper motor
-        print("Initializing stepper motor...")
-        setup()
+        sensor_id = bus.read_byte_data(VL53L0X_ADDR, VL53L0X_REG_ID)
+        if sensor_id == 0xEE:
+            print("VL53L0X sensor found")
+        else:
+            print(f"Unexpected sensor ID: 0x{sensor_id:02X}")
+    except Exception as e:
+        print(f"Error communicating with sensor: {e}")
+        return None
+    
+    # Initialize sensor (simplified initialization)
+    # For a real application, the init sequence should follow the VL53L0X datasheet
+    # This is a basic initialization
+    
+    print("VL53L0X sensor initialized")
+    return bus
+
+# Read distance from VL53L0X (mm)
+def read_distance(bus):
+    try:
+        # Start single range measurement
+        bus.write_byte_data(VL53L0X_ADDR, VL53L0X_REG_SYSRANGE_START, 0x01)
         
-        # Initialize ToF sensor
-        print("Initializing VL53L0X distance sensor...")
-        initialize_sensor()
+        # Wait for measurement completion
+        range_status = 0
+        while (range_status & 0x01) == 0:
+            range_status = bus.read_byte_data(VL53L0X_ADDR, VL53L0X_REG_RESULT_RANGE_STATUS)
+            time.sleep(0.01)
         
-        print(f"Rotating motor at {args.speed} RPM...")
-        print(f"Motor will stop when an object is detected at {args.threshold}cm or closer")
-        print("Press Ctrl+C to exit manually")
+        # Read distance value (2 bytes)
+        high_byte = bus.read_byte_data(VL53L0X_ADDR, VL53L0X_REG_RESULT_RANGE_STATUS + 10)
+        low_byte = bus.read_byte_data(VL53L0X_ADDR, VL53L0X_REG_RESULT_RANGE_STATUS + 11)
         
-        # Main control loop
+        # Combine bytes to get distance in mm
+        distance = (high_byte << 8) | low_byte
+        return distance
+    except Exception as e:
+        print(f"Error reading distance: {e}")
+        return 0
+
+# Function to rotate stepper motor
+def step_motor(steps):
+    for _ in range(steps):
+        GPIO.output(PUL_PIN, GPIO.HIGH)
+        time.sleep(STEP_DELAY)
+        GPIO.output(PUL_PIN, GPIO.LOW)
+        time.sleep(STEP_DELAY)
+
+# Main function
+def main():
+    try:
+        # Setup
+        setup_gpio()
+        bus = setup_sensor()
+        
+        if bus is None:
+            print("Failed to initialize sensor. Exiting.")
+            return
+        
+        print("Starting motor rotation...")
+        print("Will stop when distance exceeds 20cm")
+        
+        # Continue stepping until distance threshold is exceeded
         while True:
-            # Get distance reading in millimeters
-            distance_mm = get_distance()
-            # Convert to centimeters
-            distance_cm = distance_mm / 10.0
+            # Get distance reading in mm
+            distance = read_distance(bus)
+            print(f"Distance: {distance} mm")
             
-            print(f"Distance: {distance_mm} mm ({distance_cm:.1f} cm)")
-            
-            # Check if distance is below threshold
-            if distance_cm <= args.threshold:
-                print(f"Object detected at {distance_cm:.1f}cm - stopping motor")
+            if distance > DISTANCE_THRESHOLD:
+                print(f"Distance threshold exceeded ({distance} mm > {DISTANCE_THRESHOLD} mm)")
+                print("Stopping motor")
                 break
             
-            # Rotate motor by a small amount and then check distance again
-            rotate_degrees(MOTOR_STEP_ANGLE, args.clockwise, args.speed)
-            time.sleep(CHECK_INTERVAL)
-        
+            # Rotate motor one step
+            step_motor(100)  # Do 100 steps then check distance again
+            
+        print("Motor stopped. Restart program to run again.")
+            
     except KeyboardInterrupt:
-        print("\nProgram stopped by user")
-    except Exception as e:
-        print(f"Error: {e}")
+        print("Program stopped by user")
     finally:
-        # Cleanup GPIO
-        cleanup()
-        print("GPIO pins cleaned up. Program terminated.")
+        GPIO.cleanup()
+        if 'bus' in locals() and bus is not None:
+            bus.close()
+        print("GPIO and I2C cleaned up")
 
 if __name__ == "__main__":
     main()
