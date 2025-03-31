@@ -17,7 +17,8 @@ def on_purchase(pots_away):
     
     get_distance()
     smotor()
-    worm.rotate_degrees(2335)
+    for i in range(pots_away):
+        worm.rotate_degrees(2335)
     
 
 
