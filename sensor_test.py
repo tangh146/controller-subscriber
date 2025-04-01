@@ -1,7 +1,5 @@
 import RPi.GPIO as GPIO
 import time
-import csv
-import os
 from datetime import datetime
 
 # Define GPIO pins
@@ -11,9 +9,6 @@ SENSOR2_PIN = 6  # GPIO6 (physical pin 31)
 # Set up GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
-
-# Define log file
-LOG_FILE = "dht11_sensor_data.csv"
 
 def read_dht11(pin):
     """Read temperature and humidity from DHT11 sensor using GPIO"""
@@ -106,49 +101,23 @@ def read_sensor(pin, sensor_number):
         "status": "failed"
     }
 
-def log_data(sensor1_data, sensor2_data, log_file):
-    """Log sensor data to a CSV file"""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # Check if file exists to determine if we need to write headers
-    file_exists = os.path.isfile(log_file)
-    
-    with open(log_file, 'a', newline='') as csvfile:
-        fieldnames = ['timestamp', 'sensor1_temp', 'sensor1_humidity', 
-                     'sensor2_temp', 'sensor2_humidity']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        
-        if not file_exists:
-            writer.writeheader()
-        
-        writer.writerow({
-            'timestamp': timestamp,
-            'sensor1_temp': sensor1_data['temperature'] if sensor1_data['status'] == 'success' else 'N/A',
-            'sensor1_humidity': sensor1_data['humidity'] if sensor1_data['status'] == 'success' else 'N/A',
-            'sensor2_temp': sensor2_data['temperature'] if sensor2_data['status'] == 'success' else 'N/A',
-            'sensor2_humidity': sensor2_data['humidity'] if sensor2_data['status'] == 'success' else 'N/A'
-        })
-    
-    return timestamp
-
 def main():
-    """Main function to read from both sensors and log data"""
-    print("DHT11 Temperature and Humidity Sensors Logger (Direct GPIO)")
+    """Main function to read from both sensors"""
+    print("DHT11 Temperature and Humidity Sensors Reader (Direct GPIO)")
     print("----------------------------------------------------------")
     print(f"Sensor 1 connected to GPIO{SENSOR1_PIN} (physical pin 29)")
     print(f"Sensor 2 connected to GPIO{SENSOR2_PIN} (physical pin 31)")
-    print(f"Logging data to: {LOG_FILE}")
     print("Press CTRL+C to exit")
     print()
     
     try:
         while True:
+            # Get current timestamp
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
             # Read data from both sensors
             sensor1_data = read_sensor(SENSOR1_PIN, 1)
             sensor2_data = read_sensor(SENSOR2_PIN, 2)
-            
-            # Log data to CSV file
-            timestamp = log_data(sensor1_data, sensor2_data, LOG_FILE)
             
             # Display sensor 1 data
             print(f"[{timestamp}] Sensor 1 (GPIO{SENSOR1_PIN}):")
@@ -173,7 +142,6 @@ def main():
             
     except KeyboardInterrupt:
         print("\nProgram terminated by user")
-        print(f"Data has been logged to {LOG_FILE}")
     finally:
         # Clean up GPIO
         GPIO.cleanup()
