@@ -4,9 +4,8 @@ import RPi.GPIO as GPIO
 from board import *
 
 # Define the GPIO pin (GPIO4, which is physical pin 7)
-pin = 4  # or alternatively use GPIO4
 
-sensor = adafruit_dht.DHT11(pin)
+sensor = adafruit_dht.DHT11(4)
 
 while True:
     try:
