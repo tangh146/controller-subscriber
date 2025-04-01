@@ -11,140 +11,92 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
 def read_dht11(pin):
-    """Read temperature and humidity from DHT11 sensor using GPIO"""
-    # Initialize data array and result
+    """Simplified DHT11 reading function"""
+    # Initialize data array
     data = [0, 0, 0, 0, 0]
     
     # Send start signal
     GPIO.setup(pin, GPIO.OUT)
-    GPIO.output(pin, GPIO.HIGH)
-    time.sleep(0.05)
     GPIO.output(pin, GPIO.LOW)
-    time.sleep(0.02)
+    time.sleep(0.018)  # Hold low for 18ms to wake up sensor
     GPIO.output(pin, GPIO.HIGH)
     
     # Switch to input mode
-    GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(pin, GPIO.IN)
     
-    # Wait for response from sensor
-    count = 0
-    while GPIO.input(pin) == GPIO.HIGH:
-        count += 1
-        if count > 100:
-            return None, None  # Sensor not responding
-    
-    # Sensor pulls low for 80us to indicate presence
-    count = 0
-    while GPIO.input(pin) == GPIO.LOW:
-        count += 1
-        if count > 100:
-            return None, None
-    
-    # Sensor pulls high for 80us before data transmission
-    count = 0
-    while GPIO.input(pin) == GPIO.HIGH:
-        count += 1
-        if count > 100:
-            return None, None
-    
-    # Read 40 bits of data (5 bytes)
-    j = 0
-    for i in range(40):
-        # Each bit starts with a 50us low period
-        count = 0
-        while GPIO.input(pin) == GPIO.LOW:
-            count += 1
-            if count > 100:
-                return None, None
-        
-        # Duration of high signal determines bit value
-        count = 0
+    # Wait for sensor response (LOW then HIGH then LOW)
+    # Skip first transitions
+    for _ in range(40 + 2):  # Skip first 2 transitions
+        # Wait for falling edge
         while GPIO.input(pin) == GPIO.HIGH:
-            count += 1
-            if count > 100:
-                break
+            pass
         
-        # If high pulse is longer than 30us, bit is 1
-        if count > 15:
-            data[j // 8] |= (1 << (7 - (j % 8)))
-        j += 1
+        # Wait for rising edge
+        while GPIO.input(pin) == GPIO.LOW:
+            pass
+        
+        # Measure high pulse length
+        t0 = time.time()
+        while GPIO.input(pin) == GPIO.HIGH:
+            pass
+        t1 = time.time()
+        
+        # Store bit based on pulse width
+        if t1 - t0 > 0.00005:  # 50us threshold
+            # 1 bit
+            data[0] |= 1
+        
+        # Shift bits except for last iteration
+        if _ < 39 + 2:
+            data[0] <<= 1
     
-    # Calculate checksum
-    checksum = (data[0] + data[1] + data[2] + data[3]) & 0xFF
-    if data[4] != checksum:
-        return None, None  # Checksum failed
-    
-    # Calculate temperature and humidity
-    humidity = data[0]
-    temperature = data[2]
-    
-    return temperature, humidity
+    # Return temperature and humidity
+    return data[0] & 0xFF, data[0] >> 8 & 0xFF
 
-def read_sensor(pin, sensor_number):
-    """Read temperature and humidity and return formatted data"""
-    # Try a few times as DHT11 readings frequently fail
-    for _ in range(5):
-        temperature, humidity = read_dht11(pin)
-        if temperature is not None and humidity is not None:
-            return {
-                "sensor": sensor_number,
-                "temperature": temperature,
-                "humidity": humidity,
-                "status": "success"
-            }
-        time.sleep(0.2)
+def test_single_sensor(pin):
+    """Test a single sensor extensively"""
+    print(f"Testing sensor on GPIO{pin}...")
+    print("Will attempt 5 readings with delays between them.")
     
-    return {
-        "sensor": sensor_number,
-        "temperature": None,
-        "humidity": None,
-        "status": "failed"
-    }
+    for attempt in range(5):
+        print(f"  Attempt {attempt + 1}:")
+        
+        # Reset GPIO state
+        GPIO.setup(pin, GPIO.OUT)
+        GPIO.output(pin, GPIO.HIGH)
+        time.sleep(1)  # Long rest between attempts
+        
+        try:
+            temp, humidity = read_dht11(pin)
+            if temp is not None and humidity is not None:
+                print(f"    Success! Temperature: {temp}°C, Humidity: {humidity}%")
+            else:
+                print("    Failed to read sensor data")
+        except Exception as e:
+            print(f"    Error: {e}")
+        
+        time.sleep(2)
+    
+    print(f"Testing of sensor on GPIO{pin} complete.")
+    print("-" * 40)
 
 def main():
-    """Main function to read from both sensors"""
-    print("DHT11 Temperature and Humidity Sensors Reader (Direct GPIO)")
-    print("----------------------------------------------------------")
-    print(f"Sensor 1 connected to GPIO{SENSOR1_PIN} (physical pin 29)")
-    print(f"Sensor 2 connected to GPIO{SENSOR2_PIN} (physical pin 31)")
-    print("Press CTRL+C to exit")
+    """Test each sensor individually"""
+    print("DHT11 Sensor Testing Utility")
+    print("---------------------------")
+    print("This script will test each sensor individually.")
+    print("Press CTRL+C at any time to exit.")
     print()
     
     try:
         while True:
-            # Get current timestamp
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Test each sensor individually
+            test_single_sensor(SENSOR1_PIN)
+            test_single_sensor(SENSOR2_PIN)
             
-            # Read data from both sensors
-            sensor1_data = read_sensor(SENSOR1_PIN, 1)
-            sensor2_data = read_sensor(SENSOR2_PIN, 2)
-            
-            # Display sensor 1 data
-            print(f"[{timestamp}] Sensor 1 (GPIO{SENSOR1_PIN}):")
-            if sensor1_data["status"] == "success":
-                print(f"  Temperature: {sensor1_data['temperature']}°C")
-                print(f"  Humidity: {sensor1_data['humidity']}%")
-            else:
-                print("  Failed to read from sensor 1")
-            
-            # Display sensor 2 data
-            print(f"[{timestamp}] Sensor 2 (GPIO{SENSOR2_PIN}):")
-            if sensor2_data["status"] == "success":
-                print(f"  Temperature: {sensor2_data['temperature']}°C")
-                print(f"  Humidity: {sensor2_data['humidity']}%")
-            else:
-                print("  Failed to read from sensor 2")
-            
-            print("-" * 40)
-            
-            # Wait before next reading
-            time.sleep(3)
-            
+            choice = input("Press Enter to test again or 'q' to quit: ")
+            if choice.lower() == 'q':
+                break
+    
     except KeyboardInterrupt:
-        print("\nProgram terminated by user")
-    finally:
-        # Clean up GPIO
-        GPIO.cleanup()
-
-if __name__ == "__main__":
-    main()
+        print(
