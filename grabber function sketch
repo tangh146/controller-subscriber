@@ -1,0 +1,103 @@
+#include <Servo.h>
+
+Servo grabberServo, leftRightServo, upDownServo1, upDownServo2;
+
+int openGrabber = 0, closeGrabber = 30;
+int openLeftRight = 180, closeLeftRight = 0;
+int lowAngle = 0, highAngle = 130, currentPos = lowAngle;
+const int speedDelay = 50;
+
+// Rest state definition
+int restLeftRight = openLeftRight;  // Left
+int restGrabber = (openGrabber + closeGrabber) / 2;  // Middle position
+int restUpDown = highAngle;  // Up position
+
+void setup() {
+    grabberServo.attach(9);
+    leftRightServo.attach(12);
+    upDownServo1.attach(10);
+    upDownServo2.attach(11);
+    Serial.begin(9600);
+    Serial.println("Servo control ready. Use commands:");
+    Serial.println("O - Open Grabber, C - Close Grabber");
+    Serial.println("L - Move Left, R - Move Right");
+    Serial.println("U - Move Up, D - Move Down");
+    Serial.println("P1 - Execute Pickup Sequence");
+    Serial.println("S - Stop all movement, R4 - Redefine Rest State, R - Go to Rest State");
+    moveToRestState();
+}
+
+void loop() {
+    if (Serial.available() > 0) {
+        String command = Serial.readStringUntil('\n');
+        command.trim();
+
+        if (command == "O") {
+            grabberServo.write(openGrabber);
+        } else if (command == "C") {
+            grabberServo.write(closeGrabber);
+        } else if (command == "L") {
+            leftRightServo.write(openLeftRight);
+        } else if (command == "R") {
+            leftRightServo.write(closeLeftRight);
+        } else if (command == "U") {
+            moveServoSmoothly(upDownServo1, upDownServo2, currentPos, highAngle);
+        } else if (command == "D") {
+            moveServoSmoothly(upDownServo1, upDownServo2, currentPos, lowAngle);
+        } else if (command == "P1") {
+            moveToRestState();
+            executePickupSequence();
+        } else if (command == "R") {
+            moveToRestState();
+        } else if (command == "R4") {
+            redefineRestState();
+        }
+    }
+}
+
+void moveToRestState() {
+    Serial.println("Moving to rest state...");
+    leftRightServo.write(restLeftRight);
+    grabberServo.write(restGrabber);
+    moveServoSmoothly(upDownServo1, upDownServo2, currentPos, restUpDown);
+    Serial.println("Reached rest state.");
+}
+
+void executePickupSequence() {
+    Serial.println("Executing P1 sequence...");
+    moveServoSmoothly(upDownServo1, upDownServo2, currentPos, lowAngle);
+    grabberServo.write(closeGrabber);
+    delay(1000);
+    moveServoSmoothly(upDownServo1, upDownServo2, currentPos, highAngle);
+    leftRightServo.write(closeLeftRight);
+    delay(1000);
+    grabberServo.write(openGrabber);
+    moveToRestState();
+    Serial.println("P1 sequence completed.");
+}
+
+void moveServoSmoothly(Servo &servo1, Servo &servo2, int &current, int target) {
+    int step = (target > current) ? 1 : -1;
+    for (int i = current; i != target; i += step) {
+        servo1.write(i);
+        servo2.write(highAngle + lowAngle - i);
+        delay(speedDelay);
+    }
+    current = target;
+}
+
+void redefineRestState() {
+    Serial.println("Enter new rest left/right position (0-180):");
+    restLeftRight = readAngle();
+    Serial.println("Enter new rest grabber position (0-180):");
+    restGrabber = readAngle();
+    Serial.println("Enter new rest up/down position (0-180):");
+    restUpDown = readAngle();
+    Serial.println("Rest state updated.");
+}
+
+int readAngle() {
+    while (Serial.available() == 0) {}
+    int angle = Serial.parseInt();
+    return constrain(angle, 0, 180);
+}
