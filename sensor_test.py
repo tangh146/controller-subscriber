@@ -4,7 +4,7 @@ import RPi.GPIO as GPIO
 from board import *
 
 # Define the GPIO pin (GPIO4, which is physical pin 7)
-pin = D4  # or alternatively use GPIO4
+pin = 4  # or alternatively use GPIO4
 
 # Initialize the DHT22 sensor (or DHT11 as commented out)
 sensor = adafruit_dht.DHT22(pin)
