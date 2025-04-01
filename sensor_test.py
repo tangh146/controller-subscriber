@@ -1,12 +1,11 @@
 import time
-from board import *
+import board
 import adafruit_dht
-import digitalio  # This should now be available
 
 # For DHT22
-sensor = adafruit_dht.DHT22(board.D4)
+#sensor = adafruit_dht.DHT22(board.D4)
 # For DHT11, uncomment the line below and comment out the DHT22 line above
-# sensor = adafruit_dht.DHT11(board.D4)
+sensor = adafruit_dht.DHT11(board.D4, use_pulseio=False)
 
 while True:
     try:

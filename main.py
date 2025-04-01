@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import os
 from subscriber import ee, start_subscriber
 import RPi.GPIO as GPIO          
-from time import sleep
+import time
 from worm import Worm
 from nema import run_nema
 
@@ -15,10 +15,9 @@ def on_purchase(pots_away):
     print(f"RECEIVED MESSAGE = {pots_away}")
     
     run_nema()
+    #time.sleep(0.1)
     for i in range(pots_away):
         worm.rotate_degrees(2335)
-    
-
 
 
 # Set up subscriber
@@ -32,7 +31,6 @@ if __name__ == "__main__":
     
     worm = Worm(ENABLE_PIN, IN1_PIN, IN2_PIN, ENCODER_A_PIN, ENCODER_B_PIN)
 
-    on_purchase(1)
     broker_host = os.getenv("MQTT_HOST")
     broker_port = int(os.getenv("MQTT_PORT"))
     username = os.getenv("MQTT_USERNAME")

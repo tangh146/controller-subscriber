@@ -121,10 +121,11 @@ def run_nema():
     except KeyboardInterrupt:
         print("Program stopped by user")
     finally:
-        GPIO.cleanup()
-        if 'bus' in locals() and bus is not None:
-            bus.close()
-        print("GPIO and I2C cleaned up")
+        #GPIO.cleanup()
+        #if 'bus' in locals() and bus is not None:
+        #    bus.close()
+        #print("GPIO and I2C cleaned up")
+        pass
 
 if __name__ == "__main__":
     main()
