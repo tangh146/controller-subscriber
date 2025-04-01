@@ -1,10 +1,31 @@
-import sys
-import Adafruit_DHT
 import time
+import adafruit_dht
+import RPi.GPIO as GPIO
+from board import *
+
+# Define the GPIO pin (GPIO4, which is physical pin 7)
+pin = D4  # or alternatively use GPIO4
+
+# Initialize the DHT22 sensor (or DHT11 as commented out)
+sensor = adafruit_dht.DHT22(pin)
+# Uncomment for DHT11
+#sensor = adafruit_dht.DHT11(pin)
 
 while True:
+    try:
+        # Print the values to the serial port
+        temperature_c = sensor.temperature
+        temperature_f = temperature_c * (9 / 5) + 32
+        humidity = sensor.humidity
+        print("Temp={0:0.1f}ºC, Temp={1:0.1f}ºF, Humidity={2:0.1f}%".format(temperature_c, temperature_f, humidity))
 
-    humidity, temperature = Adafruit_DHT.read_retry(11, 4)
+    except RuntimeError as error:
+        # Errors happen fairly often, DHT's are hard to read, just keep going
+        print(error.args[0])
+        time.sleep(2.0)
+        continue
+    except Exception as error:
+        sensor.exit()
+        raise error
 
-    print('Temp: {0:0.1f} C  Humidity: {1:0.1f} %'.format(temperature, humidity))
-    time.sleep(1)
+    time.sleep(3.0)
