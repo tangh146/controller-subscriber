@@ -1,5 +1,5 @@
 import time
-import board
+from board import *
 import adafruit_dht
 import digitalio  # This should now be available
 
