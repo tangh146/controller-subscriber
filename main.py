@@ -5,6 +5,7 @@ import RPi.GPIO as GPIO
 import time
 from worm import Worm
 from nema import run_nema
+import dht11  
 
 # Load environment variables
 load_dotenv()
@@ -13,6 +14,10 @@ load_dotenv()
 @ee.on("purchase")
 def on_purchase(pots_away):
     print(f"RECEIVED MESSAGE = {pots_away}")
+    
+    # Optionally read temperature if needed
+    # temp = dht_monitor.get_temperature()
+    # humid = dht_monitor.get_humidity()
     
     run_nema()
     #time.sleep(0.1)
@@ -36,6 +41,16 @@ if __name__ == "__main__":
     username = os.getenv("MQTT_USERNAME")
     password = os.getenv("MQTT_PASSWORD")
    
-    print("Start MQTT subscriber...")
-    start_subscriber(broker_host, broker_port, username, password)
+    # Start DHT monitoring in the background
+    dht_monitor.start_monitoring(interval=3.0, print_values=True)
     
+    print("Start MQTT subscriber...")
+    try:
+        start_subscriber(broker_host, broker_port, username, password)
+    except KeyboardInterrupt:
+        print("Program terminated by user")
+    finally:
+        # Clean up resources
+        dht_monitor.cleanup()
+        GPIO.cleanup()
+        print("Cleanup complete")
