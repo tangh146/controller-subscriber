@@ -76,7 +76,7 @@ class DHT11:
 if __name__ == "__main__":
     try:
         # DHT11 data pin connected to GPIO4 (Pin 7)
-        sensor = DHT11(5)
+        sensor = DHT11(6)
         
         while True:
             if sensor.read():
