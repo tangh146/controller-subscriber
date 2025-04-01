@@ -1,15 +1,15 @@
 import time
+import board
 import adafruit_dht
-import RPi.GPIO as GPIO
-from board import *
+import digitalio  # This should now be available
 
-# Define the GPIO pin (GPIO4, which is physical pin 7)
-
-sensor = adafruit_dht.DHT11(4)
+# For DHT22
+sensor = adafruit_dht.DHT22(board.D4)
+# For DHT11, uncomment the line below and comment out the DHT22 line above
+# sensor = adafruit_dht.DHT11(board.D4)
 
 while True:
     try:
-        # Print the values to the serial port
         temperature_c = sensor.temperature
         temperature_f = temperature_c * (9 / 5) + 32
         humidity = sensor.humidity
