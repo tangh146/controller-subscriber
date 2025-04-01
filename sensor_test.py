@@ -1,51 +1,74 @@
-import os
-import glob
+import Adafruit_DHT
 import time
+from datetime import datetime
 
-# Initialize the 1-Wire interface
-os.system('modprobe w1-gpio')
-os.system('modprobe w1-therm')
+# Define sensor type
+SENSOR_TYPE = Adafruit_DHT.DHT11
 
-# Define the base directory for 1-Wire devices
-base_dir = '/sys/bus/w1/devices/'
-# Find the device folder that starts with 28-
-device_folder = glob.glob(base_dir + '28*')[0]
-# Define the file path for the device data
-device_file = device_folder + '/w1_slave'
+# Define GPIO pins connected to the sensors
+SENSOR1_PIN = 5  # GPIO5 (physical pin 29)
+SENSOR2_PIN = 6  # GPIO6 (physical pin 31)
 
-def read_temp_raw():
-    """Read the raw temperature data from the sensor file"""
-    with open(device_file, 'r') as f:
-        lines = f.readlines()
-    return lines
-
-def read_temp():
-    """Process the temperature data and return the temperature in Celsius and Fahrenheit"""
-    lines = read_temp_raw()
-    # Wait until the reading is valid (contains "YES")
-    while lines[0].strip()[-3:] != 'YES':
-        time.sleep(0.2)
-        lines = read_temp_raw()
+def read_sensor(sensor_pin, sensor_number):
+    """Read temperature and humidity from a DHT11 sensor"""
+    humidity, temperature = Adafruit_DHT.read_retry(SENSOR_TYPE, sensor_pin)
     
-    # Find the temperature value in the second line
-    equals_pos = lines[1].find('t=')
-    if equals_pos != -1:
-        # Extract the temperature value (it's in 1/1000 degrees Celsius)
-        temp_string = lines[1][equals_pos+2:]
-        # Convert to float and divide by 1000 to get degrees Celsius
-        temp_c = float(temp_string) / 1000.0
-        # Convert to Fahrenheit
-        temp_f = temp_c * 9.0 / 5.0 + 32.0
-        return temp_c, temp_f
+    if humidity is not None and temperature is not None:
+        return {
+            "sensor": sensor_number,
+            "temperature": temperature,
+            "humidity": humidity,
+            "status": "success"
+        }
+    else:
+        return {
+            "sensor": sensor_number,
+            "temperature": None,
+            "humidity": None,
+            "status": "failed"
+        }
+
+def main():
+    """Main function to read from both sensors"""
+    print("DHT11 Temperature and Humidity Sensors Reader")
+    print("--------------------------------------------")
+    print(f"Sensor 1 connected to GPIO{SENSOR1_PIN} (physical pin 29)")
+    print(f"Sensor 2 connected to GPIO{SENSOR2_PIN} (physical pin 31)")
+    print("Press CTRL+C to exit")
+    print()
     
-    return None, None
+    try:
+        while True:
+            # Get current timestamp
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Read data from both sensors
+            sensor1_data = read_sensor(SENSOR1_PIN, 1)
+            sensor2_data = read_sensor(SENSOR2_PIN, 2)
+            
+            # Display sensor 1 data
+            print(f"[{timestamp}] Sensor 1 (GPIO{SENSOR1_PIN}):")
+            if sensor1_data["status"] == "success":
+                print(f"  Temperature: {sensor1_data['temperature']}°C")
+                print(f"  Humidity: {sensor1_data['humidity']}%")
+            else:
+                print("  Failed to read from sensor 1")
+            
+            # Display sensor 2 data
+            print(f"[{timestamp}] Sensor 2 (GPIO{SENSOR2_PIN}):")
+            if sensor2_data["status"] == "success":
+                print(f"  Temperature: {sensor2_data['temperature']}°C")
+                print(f"  Humidity: {sensor2_data['humidity']}%")
+            else:
+                print("  Failed to read from sensor 2")
+            
+            print("-" * 40)
+            
+            # Wait before next reading (DHT11 can only be read once every 1-2 seconds)
+            time.sleep(2)
+            
+    except KeyboardInterrupt:
+        print("\nProgram terminated by user")
 
-# Main loop to continuously read temperature
-try:
-    while True:
-        temp_c, temp_f = read_temp()
-        print(f'Temperature: {temp_c:.2f}°C / {temp_f:.2f}°F')
-        time.sleep(1)  # Wait 1 second between readings
-
-except KeyboardInterrupt:
-    print('Temperature monitoring stopped.')
+if __name__ == "__main__":
+    main()
