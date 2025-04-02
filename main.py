@@ -6,6 +6,7 @@ import time
 from worm import Worm
 from nema import run_nema
 
+
 # Load environment variables
 load_dotenv()
 
@@ -18,10 +19,18 @@ def on_purchase(pots_away):
     #time.sleep(0.1)
     for i in range(pots_away):
         worm.rotate_degrees(2335)
+    #grabber code here
+    
+    # run nema reverse
+    
+    # grabber swivel drop
 
 
 # Set up subscriber
 if __name__ == "__main__":
+	# start all sensors
+	
+	
     ENABLE_PIN = 22    # PWM pin (BCM numbering)
     IN1_PIN = 23       # Direction pin 1
     IN2_PIN = 24       # Direction pin 2
