@@ -52,7 +52,7 @@ if __name__ == "__main__":
     password = os.getenv("MQTT_PASSWORD")
    
     # Start DHT monitoring in the background
-    dht_monitor.start_monitoring(interval=3.0, print_values=True)
+    #dht_monitor.start_monitoring(interval=3.0, print_values=True)
     
     print("Start MQTT subscriber...")
     try:
@@ -61,6 +61,6 @@ if __name__ == "__main__":
         print("Program terminated by user")
     finally:
         # Clean up resources
-        dht_monitor.cleanup()
+        #dht_monitor.cleanup()
         GPIO.cleanup()
         print("Cleanup complete")
