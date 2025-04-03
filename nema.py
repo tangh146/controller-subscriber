@@ -127,5 +127,13 @@ def run_nema():
         #print("GPIO and I2C cleaned up")
         pass
 
+def run_nema():
+
+    setup_gpio()
+    GPIO.output(DIR_PIN, 1)
+    step_motor(10000)
+    GPIO.output(DIR_PIN, 0)
+    step_motor(5000)
+
 if __name__ == "__main__":
-    main()
+    run_nema()

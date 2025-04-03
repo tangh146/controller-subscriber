@@ -2,6 +2,7 @@ import time
 import board
 import adafruit_dht
 import threading
+import requests  # Import requests to perform HTTP POST
 
 class DHT11Monitor:
     """
@@ -14,7 +15,7 @@ class DHT11Monitor:
         
         Args:
             pin_list (list): List of board pins to connect to DHT11 sensors.
-                             Default is [board.D4, board.D17] if None is provided.
+                             Default is [board.D19, board.D26] if None is provided.
         """
         if pin_list is None:
             pin_list = [board.D19, board.D26]
@@ -58,6 +59,34 @@ class DHT11Monitor:
         
         return results
     
+    def _post_data(self, temperature, humidity):
+        """
+        Post the sensor readings to the endpoint.
+        
+        Args:
+            temperature (float): Temperature reading from sensor 1.
+            humidity (float): Humidity reading from sensor 1.
+        """
+        # Use the actual sensor values if available; otherwise, use sentinel value -1
+        payload = {
+            "temperature1": temperature if temperature is not None else -1,
+            "temperature2": -1,
+            "temperature3": -1,
+            "humidity1": humidity if humidity is not None else -1,
+            "humidity2": -1,
+            "tankWaterLevel": -1,
+            "tds": -1,
+            "L1WaterLevel": -1,
+            "L2WaterLevel": -1
+        }
+        
+        try:
+            response = requests.post("http://18.142.255.27:82/data", json=payload, timeout=5)
+            # Optionally, you can print the status or response text for debugging:
+            print("HTTP POST Response:", response.status_code, response.text)
+        except Exception as e:
+            print("Failed to POST data:", e)
+    
     def _monitor_loop(self, interval=3.0, print_values=False):
         """Background monitoring loop, updates readings continuously."""
         self.running = True
@@ -67,12 +96,20 @@ class DHT11Monitor:
                 readings = self._read_sensors()
                 self.latest_readings = readings
                 
+                # Use sensor 1 values for POST (assuming sensor 1 is the first sensor)
+                sensor1 = readings[0] if readings else None
+                temperature1 = sensor1.get('temperature_c') if sensor1 and sensor1['error'] is None else None
+                humidity1 = sensor1.get('humidity') if sensor1 and sensor1['error'] is None else None
+
+                # Post the data
+                self._post_data(temperature1, humidity1)
+                
                 if print_values:
                     for reading in readings:
                         if reading['error'] is None:
                             print(f"DHT11 Sensor {reading['sensor_id']}: "
-                                f"{reading['temperature_c']}°C, "
-                                f"{reading['humidity']}%")
+                                  f"{reading['temperature_c']}°C, "
+                                  f"{reading['humidity']}%")
                         else:
                             print(f"DHT11 Sensor {reading['sensor_id']} error: {reading['error']}")
                 
@@ -80,7 +117,7 @@ class DHT11Monitor:
                 
             except Exception as e:
                 print(f"Error in monitoring thread: {str(e)}")
-                time.sleep(interval)  # Still sleep on error to avoid tight loop
+                time.sleep(interval)  # Sleep on error to avoid tight loop
     
     def start(self, interval=3.0, print_values=False):
         """
