@@ -5,7 +5,7 @@ import RPi.GPIO as GPIO
 import time
 from worm import Worm
 from reverse_nema import run_nema
-from dht11 import start_monitoring
+#from dht11 import start_monitoring
 
 
 # Load environment variables
