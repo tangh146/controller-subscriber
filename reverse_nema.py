@@ -15,7 +15,7 @@ from smbus2 import SMBus
 # Pin definitions
 DIR_PIN = 20    # Direction pin (DIR+)
 PUL_PIN = 21    # Pulse pin (PUL+)
-DISTANCE_THRESHOLD = 300  # 20cm in mm
+DISTANCE_THRESHOLD = 200  # 20cm in mm
 
 # VL53L0X parameters
 VL53L0X_ADDR = 0x29
@@ -28,6 +28,9 @@ I2C_BUS = 1  # Raspberry Pi 4B uses I2C bus 1
 STEP_DELAY = 0.0001  # Adjust for desired speed
 FORWARD_DIRECTION = 1  # 1 for clockwise, 0 for counterclockwise
 REVERSE_DIRECTION = 0  # Opposite of FORWARD_DIRECTION
+MICROSTEP_FACTOR = 32  # 32 microsteps per full step
+FULL_STEPS_PER_REV = 200  # Standard for NEMA stepper motors (1.8° per step)
+STEPS_PER_REV = FULL_STEPS_PER_REV * MICROSTEP_FACTOR  # 6400 pulses per revolution
 
 # Initialize GPIO
 def setup_gpio():
@@ -101,7 +104,7 @@ def run_nema():
         bus = setup_sensor()
         
         if bus is None:
-            print("Failed to initialize distance sensor. Exiting.")
+            print("Failed to initialize sensor. Exiting.")
             return
         
         print("Starting motor rotation...")
