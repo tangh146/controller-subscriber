@@ -35,7 +35,7 @@ def on_purchase(pots_away):
 if __name__ == "__main__":
 	# start all sensors
 	
-    start_monitoring()
+    #start_monitoring()
 	
     ENABLE_PIN = 22    # PWM pin (BCM numbering)
     IN1_PIN = 23       # Direction pin 1
