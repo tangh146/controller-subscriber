@@ -15,7 +15,7 @@ from smbus2 import SMBus
 # Pin definitions
 DIR_PIN = 20    # Direction pin (DIR+)
 PUL_PIN = 21    # Pulse pin (PUL+)
-DISTANCE_THRESHOLD = 500  # 20cm in mm
+DISTANCE_THRESHOLD = 608  # 20cm in mm
 
 # VL53L0X parameters
 VL53L0X_ADDR = 0x29
@@ -113,7 +113,7 @@ def run_nema():
         print("Will stop when distance exceeds 20cm and then return to initial position")
         
         total_steps = 0  # Track total steps taken
-        step_increment = 100  # Number of steps to take before checking distance
+        step_increment = 500  # Number of steps to take before checking distance
         
         # Step forward until distance threshold is exceeded
         while True:
