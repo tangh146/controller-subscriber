@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
 Raspberry Pi Stepper Motor Control with VL53L0X Distance Sensor
+- Controls a stepper motor via TB6600 driver (DIR+/PUL+)
+- Rotates clockwise until VL53L0X detects distance > 20cm
 - Then returns to initial position by rotating counterclockwise the same number of steps
 - 32 microstep setting, 6400 pulses per revolution
 - Uses smbus2 for I2C communication with VL53L0X
@@ -13,7 +15,7 @@ from smbus2 import SMBus
 # Pin definitions
 DIR_PIN = 20    # Direction pin (DIR+)
 PUL_PIN = 21    # Pulse pin (PUL+)
-DISTANCE_THRESHOLD = 200  # 20cm in mm
+DISTANCE_THRESHOLD = 500  # 20cm in mm
 
 # VL53L0X parameters
 VL53L0X_ADDR = 0x29

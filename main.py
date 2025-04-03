@@ -4,13 +4,9 @@ from subscriber import ee, start_subscriber
 import RPi.GPIO as GPIO          
 import time
 from worm import Worm
-from nema import run_nema
-<<<<<<< HEAD
-import dht11  
-=======
+from reverse_nema import run_nema
 from dht11 import start_monitoring
 
->>>>>>> 063f7006e98aee272594a6b68827bfd436096c32
 
 # Load environment variables
 load_dotenv()
