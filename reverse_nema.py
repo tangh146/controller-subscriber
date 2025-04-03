@@ -7,7 +7,7 @@ DIR_PIN = 20    # Direction pin
 STEP_PIN = 21   # Step pin
 
 # Motor configuration
-STEPS_PER_REVOLUTION = 6400  # Standard for many stepper motors (1.8° per step)
+STEPS_PER_REVOLUTION = 200  # Standard for many stepper motors (1.8° per step)
                             # Adjust based on your specific motor
                             
 MICROSTEPS = 32             # Microstep setting on TB6600 (1, 2, 4, 8, 16, or 32)
