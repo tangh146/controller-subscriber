@@ -2,8 +2,8 @@
 """
 Raspberry Pi Stepper Motor Control with VL53L0X Distance Sensor
 - Controls a stepper motor via TB6600 driver (DIR+/PUL+)
-- Stops motor when VL53L0X detects distance > 20cm
-- Then returns to initial position by rotating in opposite direction
+- Rotates clockwise until VL53L0X detects distance > 20cm
+- Then returns to initial position by rotating counterclockwise the same number of steps
 - 32 microstep setting, 6400 pulses per revolution
 - Uses smbus2 for I2C communication with VL53L0X
 """
@@ -87,8 +87,10 @@ def read_distance(bus):
 
 # Function to rotate stepper motor
 def step_motor(steps, direction):
-    # Set direction
+    # Set direction - make sure the direction change is applied
+    print(f"Setting direction pin to {'clockwise' if direction == FORWARD_DIRECTION else 'counterclockwise'}")
     GPIO.output(DIR_PIN, direction)
+    time.sleep(0.01)  # Small delay to ensure direction change is registered
     
     for _ in range(steps):
         GPIO.output(PUL_PIN, GPIO.HIGH)
@@ -130,6 +132,12 @@ def run_nema():
             
         # Return to initial position by stepping in reverse direction
         print(f"Returning to initial position (steps to reverse: {total_steps})")
+        print(f"Changing direction from {FORWARD_DIRECTION} to {REVERSE_DIRECTION}")
+        
+        # Force direction change and make it very clear in the logging
+        GPIO.output(DIR_PIN, REVERSE_DIRECTION)
+        time.sleep(0.1)  # Longer delay to ensure direction change is registered by driver
+        
         step_motor(total_steps, REVERSE_DIRECTION)
         
         print("Returned to initial position. Program complete.")
