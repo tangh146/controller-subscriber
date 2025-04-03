@@ -136,7 +136,7 @@ def run_nema():
         
         # Force direction change and make it very clear in the logging
         GPIO.output(DIR_PIN, REVERSE_DIRECTION)
-        time.sleep(0.1)  # Longer delay to ensure direction change is registered by driver
+        time.sleep(10)  # Longer delay to ensure direction change is registered by driver
         
         step_motor(total_steps, REVERSE_DIRECTION)
         
