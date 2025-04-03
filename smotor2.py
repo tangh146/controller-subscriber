@@ -44,7 +44,7 @@ def rotate_motor(direction, steps, speed_rpm):
     speed_rpm (float): Motor speed in RPM
     """
     # Set direction
-    GPIO.output(DIR_PIN, GPIO.HIGH if direction else GPIO.LOW)
+    GPIO.output(DIR_PIN, GPIO.LOW if direction else GPIO.HIGH)
     
     # Calculate delay between pulses based on desired RPM
     # delay = 60 / (speed_rpm * TOTAL_STEPS * 2)
