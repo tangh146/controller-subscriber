@@ -20,13 +20,14 @@ def on_purchase(pots_away):
     # temp = dht_monitor.get_temperature()
     # humid = dht_monitor.get_humidity()
     
-    run_nema()
+    
     #time.sleep(0.1)
     for i in range(pots_away):
         worm.rotate_degrees(2335)
     #grabber code here
     
     # run nema reverse
+    run_nema()
     
     # grabber swivel drop
 
