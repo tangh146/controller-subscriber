@@ -5,7 +5,7 @@ import RPi.GPIO as GPIO
 import time
 from worm import Worm
 from reverse_nema import run_nema
-#from dht11 import start_monitoring
+from dht11 import start_monitoring
 
 
 # Load environment variables
@@ -13,7 +13,7 @@ load_dotenv()
 
 # This function will be called when a purchase is made
 @ee.on("purchase")
-def on_purchase(pots_away):
+def on_purchase(instructions):
     print(f"RECEIVED MESSAGE = {pots_away}")
     
     # Optionally read temperature if needed
@@ -22,8 +22,8 @@ def on_purchase(pots_away):
     
     
     #time.sleep(0.1)
-    for i in range(pots_away):
-        worm.rotate_degrees(2335)
+    for instruction in instructions:
+		worm.rotate_degrees(instruction)
     #grabber code here
     
     # run nema reverse
@@ -36,7 +36,7 @@ def on_purchase(pots_away):
 if __name__ == "__main__":
 	# start all sensors
 	
-    #start_monitoring()
+    start_monitoring()
 	
     ENABLE_PIN = 22    # PWM pin (BCM numbering)
     IN1_PIN = 23       # Direction pin 1
