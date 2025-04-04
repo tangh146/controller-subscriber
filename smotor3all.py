@@ -14,7 +14,7 @@ class ServoControl:
         self.GRABBER_PIN = 6      # GPIO 6
         self.LEFT_RIGHT_PIN = 13   # GPIO 13
         self.UP_DOWN_PIN1 = 19     # GPIO 19
-        self.UP_DOWN_PIN2 = 23     # GPIO 23
+        self.UP_DOWN_PIN2 = 26     # GPIO 23
         
         # Servo angle limits
         self.OPEN_GRABBER = 60
