@@ -68,6 +68,7 @@ class DHT11Monitor:
             humidity (float): Humidity reading from sensor 1.
         """
         # Use the actual sensor values if available; otherwise, use sentinel value -1
+        # UPDATE EVERYTHING IN THIS ESP HERE!!!!!!!!
         payload = {
             "temperature1": temperature if temperature is not None else -1,
             "temperature2": -1,
@@ -77,7 +78,13 @@ class DHT11Monitor:
             "tankWaterLevel": -1,
             "tds": -1,
             "L1WaterLevel": -1,
-            "L2WaterLevel": -1
+            "L2WaterLevel": -1,
+            "mainPumpState": -1,
+            "drainPumpState": -1,
+            "peristalticPumpState": -1,
+            "ledState": -1,
+            "fanState": -1,
+            "grabberState": -1,
         }
         
         try:
