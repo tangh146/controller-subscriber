@@ -23,8 +23,8 @@ class ServoControl:
         self.OPEN_LEFT_RIGHT = 180
         self.CLOSE_LEFT_RIGHT = 0
         
-        self.LOW_ANGLE = 130
-        self.HIGH_ANGLE = 0
+        self.LOW_ANGLE = 60
+        self.HIGH_ANGLE = 90
         self.current_pos = self.LOW_ANGLE
         
         # Speed control
