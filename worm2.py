@@ -2,6 +2,7 @@ import rotary_encoder as rotary_encoder
 import pigpio
 import RPi.GPIO as GPIO
 import time
+import keyboard
 
 class Worm:
     def __init__(self, enable_pin, in1_pin, in2_pin, encoder_a_pin, encoder_b_pin):
@@ -76,3 +77,35 @@ class Worm:
         
     def callback(self, way): # Updates the position with the direction the encoder was turned.
         self.encoder_position += way
+
+if __name__ == "__main__":
+    try:
+        # Configuration - Update these to match your wiring!
+        ENABLE_PIN = 22    # PWM pin (BCM numbering)
+        IN1_PIN = 23       # Direction pin 1
+        IN2_PIN = 24       # Direction pin 2
+        ENCODER_A_PIN = 17 # Encoder channel A
+        ENCODER_B_PIN = 27
+        ROTATION_DEGREES = 3600  # Default rotation angle
+        
+        motor = Worm(ENABLE_PIN, IN1_PIN, IN2_PIN, ENCODER_A_PIN, ENCODER_B_PIN)
+        
+        print(f"Press 'r' to rotate {ROTATION_DEGREES}° CCW")
+        print("Press 'q' to quit")
+        
+        while True:
+            if keyboard.is_pressed('r'):
+                print("Rotating...")
+                motor.rotate_degrees(ROTATION_DEGREES)
+                print("Rotation complete")
+                # Wait for key release
+                while keyboard.is_pressed('r'):
+                    time.sleep(0.1)
+            elif keyboard.is_pressed('q'):
+                break
+            time.sleep(0.1)
+                
+    except KeyboardInterrupt:
+        print("Program interrupted")
+    finally:
+        motor.cleanup()
