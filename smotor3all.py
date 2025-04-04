@@ -11,10 +11,10 @@ GPIO.setwarnings(False)
 class ServoControl:
     def __init__(self):
         # Pin definitions (BCM numbering)
-        self.GRABBER_PIN = 6      # GPIO 18 (PWM0)
-        self.LEFT_RIGHT_PIN = 13   # GPIO 13 (PWM1)
-        self.UP_DOWN_PIN1 = 19     # GPIO 12 (PWM0)
-        self.UP_DOWN_PIN2 = 23     # GPIO 19 (PWM1)
+        self.GRABBER_PIN = 6      # GPIO 6
+        self.LEFT_RIGHT_PIN = 13   # GPIO 13
+        self.UP_DOWN_PIN1 = 19     # GPIO 19
+        self.UP_DOWN_PIN2 = 23     # GPIO 23
         
         # Servo angle limits
         self.OPEN_GRABBER = 60
@@ -23,8 +23,8 @@ class ServoControl:
         self.OPEN_LEFT_RIGHT = 180
         self.CLOSE_LEFT_RIGHT = 0
         
-        self.LOW_ANGLE = 60
-        self.HIGH_ANGLE = 90
+        self.LOW_ANGLE = 160
+        self.HIGH_ANGLE = 100
         self.current_pos = self.LOW_ANGLE
         
         # Speed control
@@ -129,14 +129,23 @@ def main():
     print("L - Move Left, R - Move Right")
     print("U - Move Up, D - Move Down")
     print("P1 - Execute Pickup Sequence")
-    print("S - Stop all movement, R4 - Redefine Rest State, R - Go to Rest State")
+    print("R - Go to Rest State, R4 - Redefine Rest State")
+    print("G [angle] - Set Grabber to specific angle")
+    print("LR [angle] - Set Left/Right to specific angle")
+    print("UD [angle] - Set Up/Down to specific angle")
     print("Q - Quit program")
     
     servo_control = ServoControl()
     
     try:
         while True:
-            command = input("Enter command: ").strip().upper()
+            command_input = input("Enter command: ").strip().upper()
+            command_parts = command_input.split()
+            
+            if not command_parts:
+                continue
+                
+            command = command_parts[0]
             
             if command == "O":
                 servo_control.write_servo(servo_control.grabber_servo, servo_control.OPEN_GRABBER)
@@ -144,7 +153,7 @@ def main():
                 servo_control.write_servo(servo_control.grabber_servo, servo_control.CLOSE_GRABBER)
             elif command == "L":
                 servo_control.write_servo(servo_control.left_right_servo, servo_control.OPEN_LEFT_RIGHT)
-            elif command == "R":
+            elif command == "R" and len(command_parts) == 1:
                 servo_control.write_servo(servo_control.left_right_servo, servo_control.CLOSE_LEFT_RIGHT)
             elif command == "U":
                 servo_control.move_servo_smoothly(servo_control.up_down_servo1, servo_control.up_down_servo2, servo_control.HIGH_ANGLE)
@@ -153,12 +162,45 @@ def main():
             elif command == "P1":
                 servo_control.move_to_rest_state()
                 servo_control.execute_pickup_sequence()
-            elif command == "R":
+            elif command == "R" and len(command_parts) == 1:
                 servo_control.move_to_rest_state()
             elif command == "R4":
                 servo_control.redefine_rest_state()
+            elif command == "G" and len(command_parts) > 1:
+                try:
+                    angle = int(command_parts[1])
+                    if 0 <= angle <= 180:
+                        print(f"Setting grabber to {angle} degrees")
+                        servo_control.write_servo(servo_control.grabber_servo, angle)
+                    else:
+                        print("Angle must be between 0 and 180")
+                except ValueError:
+                    print("Invalid angle value")
+            elif command == "LR" and len(command_parts) > 1:
+                try:
+                    angle = int(command_parts[1])
+                    if 0 <= angle <= 180:
+                        print(f"Setting left/right to {angle} degrees")
+                        servo_control.write_servo(servo_control.left_right_servo, angle)
+                    else:
+                        print("Angle must be between 0 and 180")
+                except ValueError:
+                    print("Invalid angle value")
+            elif command == "UD" and len(command_parts) > 1:
+                try:
+                    angle = int(command_parts[1])
+                    if 0 <= angle <= 180:
+                        print(f"Setting up/down to {angle} degrees")
+                        servo_control.move_servo_smoothly(servo_control.up_down_servo1, 
+                                                         servo_control.up_down_servo2, angle)
+                    else:
+                        print("Angle must be between 0 and 180")
+                except ValueError:
+                    print("Invalid angle value")
             elif command == "Q":
                 break
+            else:
+                print("Unknown command. Type 'Q' to quit.")
     except KeyboardInterrupt:
         print("\nProgram terminated by user")
     finally:
