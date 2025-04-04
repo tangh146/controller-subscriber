@@ -6,6 +6,7 @@ import time
 from worm import Worm
 from reverse_nema import run_nema
 from dht11 import start_monitoring
+import threading
 
 
 # Load environment variables
@@ -14,23 +15,26 @@ load_dotenv()
 # This function will be called when a purchase is made
 @ee.on("purchase")
 def on_purchase(instructions):
-    print(f"RECEIVED MESSAGE = {pots_away}")
+    print(f"RECEIVED MESSAGE = {instructions}")
     
     # Optionally read temperature if needed
     # temp = dht_monitor.get_temperature()
     # humid = dht_monitor.get_humidity()
-    
-    
-    #time.sleep(0.1)
-    for instruction in instructions:
-		worm.rotate_degrees(instruction)
-    #grabber code here
-    
-    # run nema reverse
-    run_nema()
-    
+
+    worm_thread = threading.Thread(target=execute_worm_instructions(instructions))
+    nema_ascend_thread = threading.Thread(target=run_nema())
+
+    worm_thread.start()
+    nema_ascend_thread.start()
+
+    worm_thread.join()
+    nema_ascend_thread.join()
+
     # grabber swivel drop
 
+def execute_worm_instructions(instructions):
+    for instruction in instructions:
+        worm.rotate_degrees(instruction)
 
 # Set up subscriber
 if __name__ == "__main__":
