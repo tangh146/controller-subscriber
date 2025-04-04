@@ -11,10 +11,10 @@ GPIO.setwarnings(False)
 class ServoControl:
     def __init__(self):
         # Pin definitions (BCM numbering)
-        self.GRABBER_PIN = 18      # GPIO 18 (PWM0)
+        self.GRABBER_PIN = 6      # GPIO 18 (PWM0)
         self.LEFT_RIGHT_PIN = 13   # GPIO 13 (PWM1)
-        self.UP_DOWN_PIN1 = 12     # GPIO 12 (PWM0)
-        self.UP_DOWN_PIN2 = 19     # GPIO 19 (PWM1)
+        self.UP_DOWN_PIN1 = 19     # GPIO 12 (PWM0)
+        self.UP_DOWN_PIN2 = 26     # GPIO 19 (PWM1)
         
         # Servo angle limits
         self.OPEN_GRABBER = 0
