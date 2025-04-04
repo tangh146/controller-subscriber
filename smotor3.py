@@ -1,51 +1,37 @@
 #!/usr/bin/env python3
-import time
 import RPi.GPIO as GPIO
+import time
 
-# Set up GPIO
-GPIO.setmode(GPIO.BCM)  # Use BCM GPIO numbering
+# Set up GPIO mode
+GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-# Configure GPIO 6 for servo
-SERVO_PIN = 6
-GPIO.setup(SERVO_PIN, GPIO.OUT)
+# Define the pin
+PIN = 6
 
-# Create PWM instance with 50Hz frequency (standard for servos)
-servo = GPIO.PWM(SERVO_PIN, 50)
+# Set up the pin as output
+GPIO.setup(PIN, GPIO.OUT)
 
-# Start PWM with 0 duty cycle
-servo.start(0)
-
-# Function to convert angle to duty cycle
-def angle_to_duty_cycle(angle):
-    """Convert angle (0-180) to duty cycle (2.5-12.5)"""
-    return 2.5 + (angle / 180.0) * 10.0
+# Create PWM instance (if servo was connected to this pin)
+servo = GPIO.PWM(PIN, 50)
 
 try:
-    print("Starting servo test on GPIO 6, sweeping from 0° to 180°")
-    print("Press Ctrl+C to stop")
+    # Start PWM at 0 duty cycle
+    servo.start(0)
+    print(f"GPIO pin {PIN} PWM reset to 0")
     
-    while True:
-        # Sweep from 0 to 180 degrees
-        print("Sweeping from 0° to 180°...")
-        for angle in range(0, 181, 5):  # Step by 5 degrees for smoother movement
-            duty_cycle = angle_to_duty_cycle(angle)
-            servo.ChangeDutyCycle(duty_cycle)
-            print(f"Current angle: {angle}°")
-            time.sleep(0.1)  # Short delay to let servo move
-        
-        # Sweep from 180 to 0 degrees
-        print("Sweeping from 180° to 0°...")
-        for angle in range(180, -1, -5):  # Step by 5 degrees
-            duty_cycle = angle_to_duty_cycle(angle)
-            servo.ChangeDutyCycle(duty_cycle)
-            print(f"Current angle: {angle}°")
-            time.sleep(0.1)  # Short delay to let servo move
-
-except KeyboardInterrupt:
-    print("\nServo test stopped by user")
-finally:
-    # Clean up
+    # Stop PWM
+    time.sleep(0.5)
     servo.stop()
+    print(f"PWM stopped on GPIO pin {PIN}")
+    
+    # Set pin to LOW (0)
+    GPIO.output(PIN, GPIO.LOW)
+    print(f"GPIO pin {PIN} set to LOW (0)")
+    
+except Exception as e:
+    print(f"Error: {e}")
+finally:
+    # Clean up GPIO
     GPIO.cleanup()
-    print("GPIO cleaned up")
+    print("GPIO cleanup complete")
