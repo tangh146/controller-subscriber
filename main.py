@@ -98,8 +98,6 @@ if __name__ == "__main__":
     
     worm = Worm(ENABLE_PIN, IN1_PIN, IN2_PIN, ENCODER_A_PIN, ENCODER_B_PIN)
 
-    grabberall = ServoController()
-
     broker_host = os.getenv("MQTT_HOST")
     broker_port = int(os.getenv("MQTT_PORT"))
     username = os.getenv("MQTT_USERNAME")
