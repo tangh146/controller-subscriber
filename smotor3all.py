@@ -1,211 +1,234 @@
 #!/usr/bin/env python3
-import time
+"""
+Raspberry Pi Servo Controller Class
+- Controls two servos with specific angle ranges:
+  - Servo 1: 100 to 130 degrees
+  - Servo 2: 0 to 180 degrees
+"""
+
 import RPi.GPIO as GPIO
-import threading
-import sys
+import time
 
-# Set up GPIO
-GPIO.setmode(GPIO.BCM)
-GPIO.setwarnings(False)
-
-class ServoControl:
-    def __init__(self):
-        # Pin definitions (BCM numbering)
-        self.GRABBER_PIN = 6      # GPIO 6
-        self.LEFT_RIGHT_PIN = 13   # GPIO 13
-        self.UP_DOWN_PIN1 = 19     # GPIO 19
-        self.UP_DOWN_PIN2 = 26     # GPIO 23
+class ServoController:
+    """
+    Class to control two servo motors connected to a Raspberry Pi
+    """
+    
+    def __init__(self, 
+                 servo1_pin=18, 
+                 servo2_pin=19, 
+                 servo1_range=(100, 130), 
+                 servo2_range=(0, 180),
+                 pwm_freq=50):
+        """
+        Initialize the servo controller
         
-        # Servo angle limits
-        self.OPEN_GRABBER = 60
-        self.CLOSE_GRABBER = 120
+        Args:
+            servo1_pin: GPIO pin for servo 1 (BCM numbering)
+            servo2_pin: GPIO pin for servo 2 (BCM numbering)
+            servo1_range: Tuple of (min_angle, max_angle) for servo 1
+            servo2_range: Tuple of (min_angle, max_angle) for servo 2
+            pwm_freq: PWM frequency in Hz
+        """
+        # Save pin configuration
+        self.SERVO1_PIN = servo1_pin
+        self.SERVO2_PIN = servo2_pin
         
-        self.OPEN_LEFT_RIGHT = 180
-        self.CLOSE_LEFT_RIGHT = 0
+        # Save angle ranges
+        self.SERVO1_MIN_ANGLE, self.SERVO1_MAX_ANGLE = servo1_range
+        self.SERVO2_MIN_ANGLE, self.SERVO2_MAX_ANGLE = servo2_range
         
-        self.LOW_ANGLE = 160
-        self.HIGH_ANGLE = 100
-        self.current_pos = self.LOW_ANGLE
+        # PWM frequency
+        self.PWM_FREQ = pwm_freq
         
-        # Speed control
-        self.SPEED_DELAY = 0.05  # 50ms
+        # Initialize servos as None
+        self.servo1 = None
+        self.servo2 = None
         
-        # Rest state definition
-        self.rest_left_right = self.OPEN_LEFT_RIGHT  # Left
-        self.rest_grabber = (self.OPEN_GRABBER + self.CLOSE_GRABBER) // 2  # Middle
-        self.rest_up_down = self.HIGH_ANGLE  # Up position
+        # Flag to track if setup has been called
+        self.is_setup = False
+    
+    def setup(self):
+        """
+        Initialize GPIO and servo motors
+        """
+        if self.is_setup:
+            return
+            
+        # Use GPIO numbering (not pin numbering)
+        GPIO.setmode(GPIO.BCM)
         
-        # Set up GPIO pins for servos
-        GPIO.setup(self.GRABBER_PIN, GPIO.OUT)
-        GPIO.setup(self.LEFT_RIGHT_PIN, GPIO.OUT)
-        GPIO.setup(self.UP_DOWN_PIN1, GPIO.OUT)
-        GPIO.setup(self.UP_DOWN_PIN2, GPIO.OUT)
+        # Set up servo pins as outputs
+        GPIO.setup(self.SERVO1_PIN, GPIO.OUT)
+        GPIO.setup(self.SERVO2_PIN, GPIO.OUT)
         
-        # Set up PWM for servos (50Hz is standard for servos)
-        self.grabber_servo = GPIO.PWM(self.GRABBER_PIN, 50)
-        self.left_right_servo = GPIO.PWM(self.LEFT_RIGHT_PIN, 50)
-        self.up_down_servo1 = GPIO.PWM(self.UP_DOWN_PIN1, 50)
-        self.up_down_servo2 = GPIO.PWM(self.UP_DOWN_PIN2, 50)
+        # Create PWM objects for each servo
+        self.servo1 = GPIO.PWM(self.SERVO1_PIN, self.PWM_FREQ)
+        self.servo2 = GPIO.PWM(self.SERVO2_PIN, self.PWM_FREQ)
         
-        # Start PWM
-        self.grabber_servo.start(self._angle_to_duty_cycle(self.OPEN_GRABBER))
-        self.left_right_servo.start(self._angle_to_duty_cycle(self.OPEN_LEFT_RIGHT))
-        self.up_down_servo1.start(self._angle_to_duty_cycle(self.LOW_ANGLE))
-        self.up_down_servo2.start(self._angle_to_duty_cycle(self.HIGH_ANGLE + self.LOW_ANGLE - self.LOW_ANGLE))
+        # Start PWM with servos at initial position
+        self.servo1.start(self._angle_to_duty_cycle(self.SERVO1_MIN_ANGLE))
+        self.servo2.start(self._angle_to_duty_cycle(self.SERVO2_MIN_ANGLE))
         
-        # Initialize servos
-        self.move_to_rest_state()
-        
+        self.is_setup = True
+        return self
+    
     def _angle_to_duty_cycle(self, angle):
-        """Convert angle (0-180) to duty cycle (2.5-12.5)"""
+        """
+        Convert angle in degrees to duty cycle
+        Most servos expect PWM duty cycle between 2.5% (0°) and 12.5% (180°)
+        """
         return 2.5 + (angle / 180.0) * 10.0
     
-    def write_servo(self, servo, angle):
-        """Write angle to servo"""
-        servo.ChangeDutyCycle(self._angle_to_duty_cycle(angle))
-        time.sleep(0.1)  # Small delay to let servo move
+    def set_servo1_angle(self, angle):
+        """
+        Set servo 1 to specified angle within allowed range
+        """
+        if not self.is_setup:
+            self.setup()
+            
+        # Ensure angle is within specified limits
+        angle = max(self.SERVO1_MIN_ANGLE, min(angle, self.SERVO1_MAX_ANGLE))
         
-    def move_servo_smoothly(self, servo1, servo2, target):
-        """Move two servos smoothly from current position to target"""
-        step = 1 if target > self.current_pos else -1
-        for i in range(self.current_pos, target + step, step):
-            servo1.ChangeDutyCycle(self._angle_to_duty_cycle(i))
-            servo2.ChangeDutyCycle(self._angle_to_duty_cycle(self.HIGH_ANGLE + self.LOW_ANGLE - i))
-            time.sleep(self.SPEED_DELAY)
-        self.current_pos = target
+        # Convert angle to duty cycle and set servo
+        duty_cycle = self._angle_to_duty_cycle(angle)
+        self.servo1.ChangeDutyCycle(duty_cycle)
+        
+        # Small delay to allow servo to reach position
+        time.sleep(0.1)
+        return angle
     
-    def move_to_rest_state(self):
-        """Move all servos to rest state"""
-        print("Moving to rest state...")
-        self.write_servo(self.left_right_servo, self.rest_left_right)
-        self.write_servo(self.grabber_servo, self.rest_grabber)
-        self.move_servo_smoothly(self.up_down_servo1, self.up_down_servo2, self.rest_up_down)
-        print("Reached rest state.")
+    def set_servo2_angle(self, angle):
+        """
+        Set servo 2 to specified angle within allowed range
+        """
+        if not self.is_setup:
+            self.setup()
+            
+        # Ensure angle is within specified limits
+        angle = max(self.SERVO2_MIN_ANGLE, min(angle, self.SERVO2_MAX_ANGLE))
+        
+        # Convert angle to duty cycle and set servo
+        duty_cycle = self._angle_to_duty_cycle(angle)
+        self.servo2.ChangeDutyCycle(duty_cycle)
+        
+        # Small delay to allow servo to reach position
+        time.sleep(0.1)
+        return angle
     
-    def execute_pickup_sequence(self):
-        """Execute pickup sequence"""
-        print("Executing P1 sequence...")
-        self.move_servo_smoothly(self.up_down_servo1, self.up_down_servo2, self.LOW_ANGLE)
-        self.write_servo(self.grabber_servo, self.CLOSE_GRABBER)
-        time.sleep(1)
-        self.move_servo_smoothly(self.up_down_servo1, self.up_down_servo2, self.HIGH_ANGLE)
-        self.write_servo(self.left_right_servo, self.CLOSE_LEFT_RIGHT)
-        time.sleep(1)
-        self.write_servo(self.grabber_servo, self.OPEN_GRABBER)
-        self.move_to_rest_state()
-        print("P1 sequence completed.")
+    def sweep_servo1(self, start_angle=None, end_angle=None, step=1, delay=0.02):
+        """
+        Sweep servo 1 from start_angle to end_angle in steps
+        If start_angle or end_angle is None, use the min/max values
+        """
+        if not self.is_setup:
+            self.setup()
+            
+        if start_angle is None:
+            start_angle = self.SERVO1_MIN_ANGLE
+        if end_angle is None:
+            end_angle = self.SERVO1_MAX_ANGLE
+            
+        # Ensure angles are within limits
+        start_angle = max(self.SERVO1_MIN_ANGLE, min(start_angle, self.SERVO1_MAX_ANGLE))
+        end_angle = max(self.SERVO1_MIN_ANGLE, min(end_angle, self.SERVO1_MAX_ANGLE))
+        
+        self._sweep_servo(self.servo1, start_angle, end_angle, step, delay)
     
-    def redefine_rest_state(self):
-        """Redefine rest state based on user input"""
-        print("Enter new rest left/right position (0-180):")
-        self.rest_left_right = self._read_angle()
-        print("Enter new rest grabber position (0-180):")
-        self.rest_grabber = self._read_angle()
-        print("Enter new rest up/down position (0-180):")
-        self.rest_up_down = self._read_angle()
-        print("Rest state updated.")
+    def sweep_servo2(self, start_angle=None, end_angle=None, step=1, delay=0.02):
+        """
+        Sweep servo 2 from start_angle to end_angle in steps
+        If start_angle or end_angle is None, use the min/max values
+        """
+        if not self.is_setup:
+            self.setup()
+            
+        if start_angle is None:
+            start_angle = self.SERVO2_MIN_ANGLE
+        if end_angle is None:
+            end_angle = self.SERVO2_MAX_ANGLE
+            
+        # Ensure angles are within limits
+        start_angle = max(self.SERVO2_MIN_ANGLE, min(start_angle, self.SERVO2_MAX_ANGLE))
+        end_angle = max(self.SERVO2_MIN_ANGLE, min(end_angle, self.SERVO2_MAX_ANGLE))
+        
+        self._sweep_servo(self.servo2, start_angle, end_angle, step, delay)
     
-    def _read_angle(self):
-        """Read and validate angle from user input"""
-        while True:
-            try:
-                angle = int(input())
-                return max(0, min(180, angle))  # Constrain between 0-180
-            except ValueError:
-                print("Please enter a number between 0 and 180")
+    def _sweep_servo(self, servo, start_angle, end_angle, step=1, delay=0.02):
+        """
+        Sweep a servo from start_angle to end_angle in steps
+        """
+        if start_angle < end_angle:
+            angles = range(start_angle, end_angle + 1, step)
+        else:
+            angles = range(start_angle, end_angle - 1, -step)
+            
+        for angle in angles:
+            duty_cycle = self._angle_to_duty_cycle(angle)
+            servo.ChangeDutyCycle(duty_cycle)
+            time.sleep(delay)
     
     def cleanup(self):
-        """Clean up GPIO on exit"""
-        self.grabber_servo.stop()
-        self.left_right_servo.stop()
-        self.up_down_servo1.stop()
-        self.up_down_servo2.stop()
-        GPIO.cleanup()
-
-# Main function
-def main():
-    print("Servo control ready. Use commands:")
-    print("O - Open Grabber, C - Close Grabber")
-    print("L - Move Left, R - Move Right")
-    print("U - Move Up, D - Move Down")
-    print("P1 - Execute Pickup Sequence")
-    print("R - Go to Rest State, R4 - Redefine Rest State")
-    print("G [angle] - Set Grabber to specific angle")
-    print("LR [angle] - Set Left/Right to specific angle")
-    print("UD [angle] - Set Up/Down to specific angle")
-    print("Q - Quit program")
+        """
+        Stop PWM and clean up GPIO resources
+        """
+        if self.is_setup:
+            if self.servo1:
+                self.servo1.stop()
+            if self.servo2:
+                self.servo2.stop()
+            GPIO.cleanup()
+            self.is_setup = False
     
-    servo_control = ServoControl()
-    
-    try:
-        while True:
-            command_input = input("Enter command: ").strip().upper()
-            command_parts = command_input.split()
+    def run_demo(self):
+        """
+        Run a demonstration of the servos
+        """
+        try:
+            if not self.is_setup:
+                self.setup()
+            print("Servos initialized")
             
-            if not command_parts:
-                continue
-                
-            command = command_parts[0]
+            # Give servos time to initialize
+            time.sleep(1)
             
-            if command == "O":
-                servo_control.write_servo(servo_control.grabber_servo, servo_control.OPEN_GRABBER)
-            elif command == "C":
-                servo_control.write_servo(servo_control.grabber_servo, servo_control.CLOSE_GRABBER)
-            elif command == "L":
-                servo_control.write_servo(servo_control.left_right_servo, servo_control.OPEN_LEFT_RIGHT)
-            elif command == "R" and len(command_parts) == 1:
-                servo_control.write_servo(servo_control.left_right_servo, servo_control.CLOSE_LEFT_RIGHT)
-            elif command == "U":
-                servo_control.move_servo_smoothly(servo_control.up_down_servo1, servo_control.up_down_servo2, servo_control.HIGH_ANGLE)
-            elif command == "D":
-                servo_control.move_servo_smoothly(servo_control.up_down_servo1, servo_control.up_down_servo2, servo_control.LOW_ANGLE)
-            elif command == "P1":
-                servo_control.move_to_rest_state()
-                servo_control.execute_pickup_sequence()
-            elif command == "R" and len(command_parts) == 1:
-                servo_control.move_to_rest_state()
-            elif command == "R4":
-                servo_control.redefine_rest_state()
-            elif command == "G" and len(command_parts) > 1:
-                try:
-                    angle = int(command_parts[1])
-                    if 0 <= angle <= 180:
-                        print(f"Setting grabber to {angle} degrees")
-                        servo_control.write_servo(servo_control.grabber_servo, angle)
-                    else:
-                        print("Angle must be between 0 and 180")
-                except ValueError:
-                    print("Invalid angle value")
-            elif command == "LR" and len(command_parts) > 1:
-                try:
-                    angle = int(command_parts[1])
-                    if 0 <= angle <= 180:
-                        print(f"Setting left/right to {angle} degrees")
-                        servo_control.write_servo(servo_control.left_right_servo, angle)
-                    else:
-                        print("Angle must be between 0 and 180")
-                except ValueError:
-                    print("Invalid angle value")
-            elif command == "UD" and len(command_parts) > 1:
-                try:
-                    angle = int(command_parts[1])
-                    if 0 <= angle <= 180:
-                        print(f"Setting up/down to {angle} degrees")
-                        servo_control.move_servo_smoothly(servo_control.up_down_servo1, 
-                                                         servo_control.up_down_servo2, angle)
-                    else:
-                        print("Angle must be between 0 and 180")
-                except ValueError:
-                    print("Invalid angle value")
-            elif command == "Q":
-                break
-            else:
-                print("Unknown command. Type 'Q' to quit.")
-    except KeyboardInterrupt:
-        print("\nProgram terminated by user")
-    finally:
-        servo_control.cleanup()
-        print("GPIO cleaned up")
+            print(f"Sweeping Servo 1 ({self.SERVO1_MIN_ANGLE}° to {self.SERVO1_MAX_ANGLE}°)")
+            self.sweep_servo1()
+            time.sleep(0.5)
+            
+            print(f"Sweeping Servo 1 back ({self.SERVO1_MAX_ANGLE}° to {self.SERVO1_MIN_ANGLE}°)")
+            self.sweep_servo1(self.SERVO1_MAX_ANGLE, self.SERVO1_MIN_ANGLE)
+            time.sleep(0.5)
+            
+            print(f"Sweeping Servo 2 ({self.SERVO2_MIN_ANGLE}° to {self.SERVO2_MAX_ANGLE}°)")
+            self.sweep_servo2()
+            time.sleep(0.5)
+            
+            print(f"Sweeping Servo 2 back ({self.SERVO2_MAX_ANGLE}° to {self.SERVO2_MIN_ANGLE}°)")
+            self.sweep_servo2(self.SERVO2_MAX_ANGLE, self.SERVO2_MIN_ANGLE)
+            time.sleep(0.5)
+            
+            # Example of setting specific angles
+            middle_angle1 = self.SERVO1_MIN_ANGLE + (self.SERVO1_MAX_ANGLE - self.SERVO1_MIN_ANGLE) // 2
+            print(f"Setting Servo 1 to mid-position ({middle_angle1}°)")
+            self.set_servo1_angle(middle_angle1)
+            
+            middle_angle2 = self.SERVO2_MIN_ANGLE + (self.SERVO2_MAX_ANGLE - self.SERVO2_MIN_ANGLE) // 2
+            print(f"Setting Servo 2 to mid-position ({middle_angle2}°)")
+            self.set_servo2_angle(middle_angle2)
+            
+            time.sleep(2)
+            
+        except KeyboardInterrupt:
+            print("Program stopped by user")
+        finally:
+            self.cleanup()
+            print("Cleanup complete")
 
+# Example usage when this file is run directly
 if __name__ == "__main__":
-    main()
+    # Create a servo controller with default settings
+    controller = ServoController()
+    
+    # Run the demo
+    controller.run_demo()
