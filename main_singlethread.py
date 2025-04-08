@@ -20,20 +20,10 @@ def on_purchase(instructions):
     # Optionally read temperature if needed
     # temp = dht_monitor.get_temperature()
     # humid = dht_monitor.get_humidity()
-    execute_elevator_instructions()
-    execute_worm_instructions(instructions)
-
-    # grabber swivel drop
-    run_elevator_with_servo()
-
-
-def execute_worm_instructions(instructions):
-    print("THREAD WORM STARTED")
     for instruction in instructions:
         worm.rotate_degrees(instruction)
 
-def execute_elevator_instructions():
-    print("THREAD ELEVATOR STARTED")
+    # grabber swivel drop
     run_elevator_with_servo()
 
 # This function will be called when a main pump command is received
