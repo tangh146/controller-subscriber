@@ -6,6 +6,7 @@ import time
 from worm import Worm
 from elevator import run_elevator
 from dht11 import start_monitoring
+from smotor3all import ServoController
 import threading
 
 
@@ -31,6 +32,9 @@ def on_purchase(instructions):
     elevator_ascend_thread.join()
 
     # grabber swivel drop
+    grabberall.run_sequence()
+    grabberall.cleanup()
+
 
 def execute_worm_instructions(instructions):
     print("THREAD WORM STARTED")
@@ -95,6 +99,8 @@ if __name__ == "__main__":
     ROTATION_DEGREES = 2335  # Default rotation angle
     
     worm = Worm(ENABLE_PIN, IN1_PIN, IN2_PIN, ENCODER_A_PIN, ENCODER_B_PIN)
+
+    grabberall = ServoController()
 
     broker_host = os.getenv("MQTT_HOST")
     broker_port = int(os.getenv("MQTT_PORT"))
