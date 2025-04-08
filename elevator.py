@@ -150,10 +150,15 @@ def run_servo_final_step(servo_controller):
         print("Final servo step completed!")
     except Exception as e:
         print(f"Error during final servo step: {e}")
-    
+    finally:
+        # Only stop the servos but don't do GPIO.cleanup()
+        for servo in servo_controller.servos:
+            servo.stop()
+        
     print("Servo sequence fully completed")
 
 # Main function
+
 def run_elevator_with_servo():
     print("Starting integrated elevator and servo control")
     try:
@@ -208,18 +213,9 @@ def run_elevator_with_servo():
     except KeyboardInterrupt:
         print("Program stopped by user")
     finally:
-        # Clean up the servo controller if it exists
-        if 'servo_controller' in locals() and servo_controller is not None:
-            for servo in servo_controller.servos:
-                servo.stop()
-                
-        # Clean up GPIO
         GPIO.cleanup()
-        
-        # Close I2C bus if it exists
         if 'bus' in locals() and bus is not None:
             bus.close()
-            
         print("GPIO and I2C cleaned up")
 
 if __name__ == "__main__":
