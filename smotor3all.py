@@ -85,3 +85,14 @@ class ServoController:
             servo.stop()
         GPIO.cleanup()
         print("GPIO cleanup completed")
+
+# Add this main function and if __name__ block
+def main():
+    controller = ServoController()
+    try:
+        controller.run_sequence()
+    finally:
+        controller.cleanup()
+
+if __name__ == "__main__":
+    main()
