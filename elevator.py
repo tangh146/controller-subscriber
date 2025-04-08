@@ -214,13 +214,13 @@ def run_elevator_with_servo():
                 servo.stop()
                 
         # Clean up GPIO
-        #GPIO.cleanup()
+        GPIO.cleanup()
         
         # Close I2C bus if it exists
         if 'bus' in locals() and bus is not None:
             bus.close()
             
-        #print("GPIO and I2C cleaned up")
+        print("GPIO and I2C cleaned up")
 
 if __name__ == "__main__":
     run_elevator_with_servo()
