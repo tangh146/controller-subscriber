@@ -100,6 +100,7 @@ def step_motor(steps, direction):
 
 # Main function
 def run_nema():
+    print("THREAD NEMA STARTED")
     try:
         # Setup
         setup_gpio()
