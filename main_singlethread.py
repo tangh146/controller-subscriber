@@ -4,7 +4,7 @@ from subscriber import ee, start_subscriber
 import RPi.GPIO as GPIO          
 import time
 from worm import Worm
-from elevator import run_elevator
+from elevator import run_elevator_with_servo
 from dht11 import start_monitoring
 from smotor3all import ServoController
 import threading
@@ -36,7 +36,7 @@ def execute_worm_instructions(instructions):
 
 def execute_elevator_instructions():
     print("THREAD ELEVATOR STARTED")
-    run_elevator()
+    run_elevator_with_servo()
 
 # This function will be called when a main pump command is received
 @ee.on("defarm/remote/main_pump")
