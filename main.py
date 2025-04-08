@@ -4,7 +4,7 @@ from subscriber import ee, start_subscriber
 import RPi.GPIO as GPIO          
 import time
 from worm import Worm
-from finding_nemo import run_nema
+from elevator import run_elevator
 from dht11 import start_monitoring
 import threading
 
@@ -22,7 +22,7 @@ def on_purchase(instructions):
     # humid = dht_monitor.get_humidity()
 
     worm_thread = threading.Thread(target=execute_worm_instructions(instructions))
-    nema_ascend_thread = threading.Thread(target=execute_nema_ascend())
+    nema_ascend_thread = threading.Thread(target=execute_nema_instructions())
 
     worm_thread.start()
     nema_ascend_thread.start()
@@ -37,8 +37,9 @@ def execute_worm_instructions(instructions):
     for instruction in instructions:
         worm.rotate_degrees(instruction)
 
-def execute_nema_ascend():
-    run_nema()
+def execute_nema_instructions():
+    print("THREAD ELEVATOR STARTED")
+    run_elevator()
 
 # This function will be called when a main pump command is received
 @ee.on("defarm/remote/main_pump")

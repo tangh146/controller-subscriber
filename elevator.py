@@ -99,8 +99,8 @@ def step_motor(steps, direction):
         time.sleep(STEP_DELAY)
 
 # Main function
-def run_nema():
-    print("THREAD NEMA STARTED")
+def run_elevator():
+    print("IN ELEVATOR THREAD")
     try:
         # Setup
         setup_gpio()
@@ -152,4 +152,4 @@ def run_nema():
         print("GPIO and I2C cleaned up")
 
 if __name__ == "__main__":
-    run_nema()
+    run_elevator()
