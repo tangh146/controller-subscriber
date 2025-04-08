@@ -213,7 +213,7 @@ def run_elevator_with_servo():
     except KeyboardInterrupt:
         print("Program stopped by user")
     finally:
-        # GPIO.cleanup()
+        GPIO.cleanup()
         if 'bus' in locals() and bus is not None:
             bus.close()
         print("GPIO and I2C cleaned up")
