@@ -6,7 +6,6 @@ import time
 from worm import Worm
 from elevator import run_elevator_with_servo
 from dht11 import start_monitoring
-from smotor3all import ServoController
 import threading
 
 
@@ -32,8 +31,7 @@ def on_purchase(instructions):
     elevator_ascend_thread.join()
 
     # grabber swivel drop
-    grabberall.run_sequence()
-    grabberall.cleanup()
+    run_elevator_with_servo()
 
 
 def execute_worm_instructions(instructions):
