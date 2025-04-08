@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
-Raspberry Pi Stepper Motor Control with VL53L0X Distance Sensor
+Integrated Raspberry Pi Stepper Motor Control with VL53L0X Distance Sensor and Servo Sequence
 - Controls a stepper motor via TB6600 driver (DIR+/PUL+)
 - Rotates clockwise until VL53L0X detects distance > 20cm
-- Then returns to initial position by rotating counterclockwise the same number of steps
-- 32 microstep setting, 6400 pulses per revolution
+- Then runs a servo sequence instead of waiting
+- After servo sequence, returns to initial position by rotating counterclockwise
 - Uses smbus2 for I2C communication with VL53L0X
 """
 
 import RPi.GPIO as GPIO
 import time
 from smbus2 import SMBus
+from smotor3all import ServoController  # Import ServoController class
 
 # Pin definitions
 DIR_PIN = 20    # Direction pin (DIR+)
@@ -98,8 +99,71 @@ def step_motor(steps, direction):
         GPIO.output(PUL_PIN, GPIO.LOW)
         time.sleep(STEP_DELAY)
 
+# Function to run servo sequence
+def run_servo_sequence_partial():
+    """Run steps 1-8 of the servo sequence (excluding the final step)"""
+    print("Running partial servo sequence (steps 1-8)...")
+    
+    # Create an instance of ServoController
+    servo_controller = ServoController()
+    
+    steps = [
+        (1, "Setting initial positions (Servo 1: 0°, Servo 2: 45°, Servo 3: 165°)", 
+         [(0, 0), (1, 45), (2, 165)]),
+        (2, "Moving Servo 1 to 90°", [(0, 90)]),
+        (3, "Moving Servo 1 to 180°", [(0, 180)]),
+        (4, "Moving Servo 2 to 130°", [(1, 130)]),
+        (5, "Moving Servo 3 to 180°", [(2, 180)]),
+        (6, "Moving Servo 2 to 45°", [(1, 45)]),
+        (7, "Moving Servo 1 to 90°", [(0, 90)]),
+        (8, "Moving Servo 1 to 0°", [(0, 0)])
+        # Step 9 is excluded and will be run separately
+    ]
+    
+    try:
+        for step_num, description, movements in steps:
+            print(f"Step {step_num}: {description}")
+            
+            for servo_idx, angle in movements:
+                servo_controller.set_angle(servo_idx, angle)
+            
+            time.sleep(1)  # Wait between steps
+        
+        print("Partial servo sequence completed (steps 1-8)!")
+        
+        # Return the controller so we can use it again later
+        return servo_controller
+        
+    except Exception as e:
+        print(f"Error during servo sequence: {e}")
+        # Still return the controller even if an error occurred
+        return servo_controller
+
+def run_servo_final_step(servo_controller):
+    """Run only the final step (step 9) of the servo sequence"""
+    print("Running final servo step (Step 9: Moving Servo 3 to 165°)...")
+    
+    try:
+        # Execute only step 9
+        servo_controller.set_angle(2, 165)  # Move Servo 3 to 165°
+        time.sleep(0.5)  # Allow time for servo to reach position
+        print("Final servo step completed!")
+    except Exception as e:
+        print(f"Error during final servo step: {e}")
+    finally:
+        # Only stop the servos but don't do GPIO.cleanup()
+        for servo in servo_controller.servos:
+            servo.stop()
+        
+    print("Servo sequence fully completed")
+
 # Main function
+<<<<<<< HEAD
 def run_elevator():
+=======
+def run_elevator_with_servo():
+    print("Starting integrated elevator and servo control")
+>>>>>>> 0eb9568d629b7736a291d3dad578b5b9f230f002
     try:
         # Setup
         setup_gpio()
@@ -110,7 +174,7 @@ def run_elevator():
             return
         
         print("Starting motor rotation...")
-        print("Will stop when distance exceeds 20cm and then return to initial position")
+        print("Will stop when distance exceeds 20cm, run servo sequence, then return to initial position")
         
         total_steps = 0  # Track total steps taken
         step_increment = 500  # Number of steps to take before checking distance
@@ -130,17 +194,24 @@ def run_elevator():
             step_motor(step_increment, FORWARD_DIRECTION)
             total_steps += step_increment
             
+        # Change direction for return journey
+        print(f"Changing direction from {FORWARD_DIRECTION} to {REVERSE_DIRECTION}")
+        GPIO.output(DIR_PIN, REVERSE_DIRECTION)
+        
+        # Run steps 1-8 of the servo sequence (excluding the final step)
+        print("Starting partial servo sequence (steps 1-8) instead of waiting 10 seconds")
+        servo_controller = run_servo_sequence_partial()
+        
         # Return to initial position by stepping in reverse direction
         print(f"Returning to initial position (steps to reverse: {total_steps})")
-        print(f"Changing direction from {FORWARD_DIRECTION} to {REVERSE_DIRECTION}")
-        
-        # Force direction change and make it very clear in the logging
-        GPIO.output(DIR_PIN, REVERSE_DIRECTION)
-        time.sleep(10)  # Longer delay to ensure direction change is registered by driver
-        
         step_motor(total_steps, REVERSE_DIRECTION)
+        print("Returned to initial position.")
         
-        print("Returned to initial position. Program complete.")
+        # Now run only the final step of the servo sequence
+        print("Running final servo step (step 9) after returning to initial position")
+        run_servo_final_step(servo_controller)
+        
+        print("Integrated sequence completed successfully.")
             
     except KeyboardInterrupt:
         print("Program stopped by user")
@@ -151,4 +222,4 @@ def run_elevator():
         print("GPIO and I2C cleaned up")
 
 if __name__ == "__main__":
-    run_elevator()
+    run_elevator_with_servo()
