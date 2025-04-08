@@ -15,8 +15,8 @@ class ServoController:
     """
     
     def __init__(self, 
-                 servo1_pin=18, 
-                 servo2_pin=19, 
+                 servo1_pin=6, 
+                 servo2_pin=13, 
                  servo1_range=(100, 130), 
                  servo2_range=(0, 180),
                  pwm_freq=50):
