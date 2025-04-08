@@ -100,7 +100,6 @@ def step_motor(steps, direction):
 
 # Main function
 def run_elevator():
-    print("IN ELEVATOR THREAD")
     try:
         # Setup
         setup_gpio()
