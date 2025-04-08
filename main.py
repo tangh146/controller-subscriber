@@ -34,12 +34,18 @@ def on_purchase(instructions):
 
 def execute_worm_instructions(instructions):
     print("THREAD WORM STARTED")
-    # for instruction in instructions:
-    #     worm.rotate_degrees(instruction)
+    try:
+        for instruction in instructions:
+            worm.rotate_degrees(instruction)
+    except Exception as e:
+        print(e)
 
 def execute_nema_instructions():
     print("THREAD ELEVATOR STARTED")
-    # run_elevator()
+    try:
+        run_elevator()
+    except Exception as e:
+        print(e)
 
 # This function will be called when a main pump command is received
 @ee.on("defarm/remote/main_pump")
