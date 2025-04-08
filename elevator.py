@@ -158,12 +158,9 @@ def run_servo_final_step(servo_controller):
     print("Servo sequence fully completed")
 
 # Main function
-<<<<<<< HEAD
-def run_elevator():
-=======
+
 def run_elevator_with_servo():
     print("Starting integrated elevator and servo control")
->>>>>>> 0eb9568d629b7736a291d3dad578b5b9f230f002
     try:
         # Setup
         setup_gpio()
