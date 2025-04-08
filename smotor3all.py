@@ -79,20 +79,12 @@ class ServoController:
         except Exception as e:
             print(f"An error occurred: {e}")
     
-    def cleanup(self):
-        """Stop all servos and clean up GPIO."""
-        for servo in self.servos:
-            servo.stop()
-        GPIO.cleanup()
-        print("GPIO cleanup completed")
 
 # Add this main function and if __name__ block
 def main():
     controller = ServoController()
-    try:
-        controller.run_sequence()
-    finally:
-        controller.cleanup()
+    controller.run_sequence()
+
 
 if __name__ == "__main__":
     main()
