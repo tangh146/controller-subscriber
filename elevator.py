@@ -207,20 +207,20 @@ def run_elevator_with_servo():
             
     except KeyboardInterrupt:
         print("Program stopped by user")
-    finally:
-        # Clean up the servo controller if it exists
-        if 'servo_controller' in locals() and servo_controller is not None:
-            for servo in servo_controller.servos:
-                servo.stop()
+    # finally:
+    #     # Clean up the servo controller if it exists
+    #     if 'servo_controller' in locals() and servo_controller is not None:
+    #         for servo in servo_controller.servos:
+    #             servo.stop()
                 
-        # Clean up GPIO
-        GPIO.cleanup()
+    #     # Clean up GPIO
+    #     GPIO.cleanup()
         
-        # Close I2C bus if it exists
-        if 'bus' in locals() and bus is not None:
-            bus.close()
+    #     # Close I2C bus if it exists
+    #     if 'bus' in locals() and bus is not None:
+    #         bus.close()
             
-        print("GPIO and I2C cleaned up")
+    #     print("GPIO and I2C cleaned up")
 
 if __name__ == "__main__":
     run_elevator_with_servo()
