@@ -22,24 +22,24 @@ def on_purchase(instructions):
     # humid = dht_monitor.get_humidity()
 
     worm_thread = threading.Thread(target=execute_worm_instructions(instructions))
-    nema_ascend_thread = threading.Thread(target=execute_nema_instructions())
+    elevator_ascend_thread = threading.Thread(target=execute_nema_instructions())
 
     worm_thread.start()
-    nema_ascend_thread.start()
+    elevator_ascend_thread.start()
 
     worm_thread.join()
-    nema_ascend_thread.join()
+    elevator_ascend_thread.join()
 
     # grabber swivel drop
 
 def execute_worm_instructions(instructions):
     print("THREAD WORM STARTED")
-    for instruction in instructions:
-        worm.rotate_degrees(instruction)
+    # for instruction in instructions:
+    #     worm.rotate_degrees(instruction)
 
 def execute_nema_instructions():
     print("THREAD ELEVATOR STARTED")
-    run_elevator()
+    # run_elevator()
 
 # This function will be called when a main pump command is received
 @ee.on("defarm/remote/main_pump")
