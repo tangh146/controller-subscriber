@@ -21,8 +21,8 @@ def on_purchase(instructions):
     # temp = dht_monitor.get_temperature()
     # humid = dht_monitor.get_humidity()
 
-    worm_thread = threading.Thread(target=execute_worm_instructions(instructions))
-    elevator_ascend_thread = threading.Thread(target=execute_nema_instructions())
+    worm_thread = threading.Thread(target=execute_worm_instructions, args=(instructions,))
+    elevator_ascend_thread = threading.Thread(target=execute_elevator_instructions)
 
     worm_thread.start()
     elevator_ascend_thread.start()
@@ -34,18 +34,12 @@ def on_purchase(instructions):
 
 def execute_worm_instructions(instructions):
     print("THREAD WORM STARTED")
-    try:
-        for instruction in instructions:
-            worm.rotate_degrees(instruction)
-    except Exception as e:
-        print(e)
+    for instruction in instructions:
+        worm.rotate_degrees(instruction)
 
-def execute_nema_instructions():
+def execute_elevator_instructions():
     print("THREAD ELEVATOR STARTED")
-    try:
-        run_elevator()
-    except Exception as e:
-        print(e)
+    run_elevator()
 
 # This function will be called when a main pump command is received
 @ee.on("defarm/remote/main_pump")
