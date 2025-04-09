@@ -16,7 +16,7 @@ def on_purchase(instructions):
 
     for instruction in instructions:
         time.sleep(0.1)
-        worm.rotate_degrees(2335)
+        worm.rotate_degrees(instruction)
 
     # grabber swivel drop
     run_elevator_with_servo()
@@ -45,12 +45,4 @@ if __name__ == "__main__":
     #dht_monitor.start_monitoring(interval=3.0, print_values=True)
     
     print("Start MQTT subscriber...")
-    try:
-        start_subscriber(broker_host, broker_port, username, password)
-    except KeyboardInterrupt:
-        print("Program terminated by user")
-    finally:
-        # Clean up resources
-        #dht_monitor.cleanup()
-        GPIO.cleanup()
-        print("Cleanup complete")
+    start_subscriber(broker_host, broker_port, username, password)
