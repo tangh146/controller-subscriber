@@ -3,8 +3,8 @@ import os
 from subscriber import ee, start_subscriber
 import RPi.GPIO as GPIO          
 import time
-from worm import Worm
-# from elevator import run_elevator_with_servo
+from worm2 import Worm
+from elevator import run_elevator_with_servo
 
 # Load environment variables
 load_dotenv()
@@ -15,11 +15,10 @@ def on_purchase(instructions):
     print(f"RECEIVED MESSAGE = {instructions}")
 
     for instruction in instructions:
-        time.sleep(0.1)
         worm.rotate_degrees(instruction)
 
     # grabber swivel drop
-    # run_elevator_with_servo()
+    run_elevator_with_servo()
 
 # Set up subscriber
 if __name__ == "__main__":
