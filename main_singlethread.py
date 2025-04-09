@@ -4,7 +4,7 @@ from subscriber import ee, start_subscriber
 import RPi.GPIO as GPIO          
 import time
 from worm import Worm
-from elevator import run_elevator_with_servo
+# from elevator import run_elevator_with_servo
 
 # Load environment variables
 load_dotenv()
@@ -19,7 +19,7 @@ def on_purchase(instructions):
         worm.rotate_degrees(instruction)
 
     # grabber swivel drop
-    run_elevator_with_servo()
+    # run_elevator_with_servo()
 
 # Set up subscriber
 if __name__ == "__main__":
