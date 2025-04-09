@@ -15,6 +15,7 @@ def on_purchase(instructions):
     print(f"RECEIVED MESSAGE = {instructions}")
 
     for instruction in instructions:
+        time.sleep(0.1)
         worm.rotate_degrees(instruction)
 
     # grabber swivel drop
