@@ -174,7 +174,7 @@ def run_elevator_with_servo():
         print("Will stop when distance exceeds 20cm, run servo sequence, then return to initial position")
         
         total_steps = 0  # Track total steps taken
-        step_increment = 1000  # Number of steps to take before checking distance
+        step_increment = 500  # Number of steps to take before checking distance
         
         # Step forward until distance threshold is exceeded
         while True:
