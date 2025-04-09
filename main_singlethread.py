@@ -16,7 +16,7 @@ def on_purchase(instructions):
 
     for instruction in instructions:
         time.sleep(0.1)
-        worm.rotate_degrees(instruction)
+        worm.rotate_degrees(2335)
 
     # grabber swivel drop
     run_elevator_with_servo()
