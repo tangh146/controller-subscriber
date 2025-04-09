@@ -4,7 +4,7 @@ from pyee import EventEmitter
 
 from dotenv import load_dotenv
 import os
-from subscriber import ee, start_subscriber
+# from subscriber import ee, start_subscriber
 import RPi.GPIO as GPIO          
 import time
 from worm import Worm
