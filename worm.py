@@ -2,6 +2,7 @@ import rotary_encoder as rotary_encoder
 import pigpio
 import RPi.GPIO as GPIO
 import time
+import keyboard
 
 class Worm:
     def __init__(self, enable_pin, in1_pin, in2_pin, encoder_a_pin, encoder_b_pin):

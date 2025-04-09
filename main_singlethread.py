@@ -5,9 +5,6 @@ import RPi.GPIO as GPIO
 import time
 from worm import Worm
 from elevator import run_elevator_with_servo
-from dht11 import start_monitoring
-import threading
-
 
 # Load environment variables
 load_dotenv()
@@ -16,61 +13,18 @@ load_dotenv()
 @ee.on("purchase")
 def on_purchase(instructions):
     print(f"RECEIVED MESSAGE = {instructions}")
-    
-    # Optionally read temperature if needed
-    # temp = dht_monitor.get_temperature()
-    # humid = dht_monitor.get_humidity()
+
     for instruction in instructions:
         worm.rotate_degrees(instruction)
 
     # grabber swivel drop
     run_elevator_with_servo()
 
-# This function will be called when a main pump command is received
-@ee.on("defarm/remote/main_pump")
-def on_main_pump(payload):
-    print(f"MAIN PUMP COMMAND RECEIVED: {payload}")
-
-# This function will be called when a drain pump command is received
-@ee.on("defarm/remote/drain_pump")
-def on_drain_pump(payload):
-    print(f"DRAIN PUMP COMMAND RECEIVED: {payload}")
-
-# This function will be called when a peristaltic pump command is received
-@ee.on("defarm/remote/peristaltic_pump")
-def on_peristaltic_pump(payload):
-    print(f"PERISTALTIC PUMP COMMAND RECEIVED: {payload}")
-
-# This function will be called when an LED command is received
-@ee.on("defarm/remote/led")
-def on_led(payload):
-    print(f"LED COMMAND RECEIVED: {payload}")
-
-# This function will be called when a fan command is received
-@ee.on("defarm/remote/fan")
-def on_fan(payload):
-    print(f"FAN COMMAND RECEIVED: {payload}")
-
-# This function will be called when an elevator command is received
-@ee.on("defarm/remote/elevator")
-def on_elevator(payload):
-    print(f"ELEVATOR COMMAND RECEIVED: {payload}")
-
-# This function will be called when a worm command is received
-@ee.on("defarm/remote/worm")
-def on_worm(payload):
-    print(f"WORM COMMAND RECEIVED: {payload}")
-
-# This function will be called when a grabber command is received
-@ee.on("defarm/remote/grabber")
-def on_grabber(payload):
-    print(f"GRABBER COMMAND RECEIVED: {payload}")
-
 # Set up subscriber
 if __name__ == "__main__":
 	# start all sensors
 	
-    start_monitoring()
+    # start_monitoring()
 	
     ENABLE_PIN = 22    # PWM pin (BCM numbering)
     IN1_PIN = 23       # Direction pin 1
