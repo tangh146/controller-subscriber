@@ -29,7 +29,7 @@ I2C_BUS = 1  # Raspberry Pi 4B uses I2C bus 1
 STEP_DELAY = 0.0001  # Adjust for desired speed
 FORWARD_DIRECTION = 1  # 1 for clockwise, 0 for counterclockwise
 REVERSE_DIRECTION = 0  # Opposite of FORWARD_DIRECTION
-MICROSTEP_FACTOR = 16  # 32 microsteps per full step
+MICROSTEP_FACTOR = 32  # 32 microsteps per full step
 FULL_STEPS_PER_REV = 200  # Standard for NEMA stepper motors (1.8° per step)
 STEPS_PER_REV = FULL_STEPS_PER_REV * MICROSTEP_FACTOR  # 6400 pulses per revolution
 
@@ -174,7 +174,7 @@ def run_elevator_with_servo():
         print("Will stop when distance exceeds 20cm, run servo sequence, then return to initial position")
         
         total_steps = 0  # Track total steps taken
-        step_increment = 500  # Number of steps to take before checking distance
+        step_increment = 1000  # Number of steps to take before checking distance
         
         # Step forward until distance threshold is exceeded
         while True:
