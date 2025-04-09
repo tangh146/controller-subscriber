@@ -14,11 +14,9 @@ load_dotenv()
 def on_purchase(instructions):
     print(f"RECEIVED MESSAGE = {instructions}")
 
-    worm.rotate_degrees(2335)
-
-    # for instruction in instructions:
-    #     time.sleep(0.1)
-    #     worm.rotate_degrees(instruction)
+    for instruction in instructions:
+        time.sleep(0.1)
+        worm.rotate_degrees(instruction)
 
     # grabber swivel drop
     run_elevator_with_servo()
