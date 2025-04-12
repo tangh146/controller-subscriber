@@ -52,15 +52,15 @@ class ServoController:
         """
         steps = [
             (1, "Setting initial positions (Servo 1: 0°, Servo 2: 45°, Servo 3: 165°)", 
-             [(0, 0), (1, 45), (2, 165)]),
+             [(0, 0), (1, 45), (2, 100)]),
             (2, "Moving Servo 1 to 90°", [(0, 90)]),
             (3, "Moving Servo 1 to 180°", [(0, 180)]),
             (4, "Moving Servo 2 to 130°", [(1, 130)]),
-            (5, "Moving Servo 3 to 180°", [(2, 180)]),
+            (5, "Moving Servo 3 to 180°", [(2, 130)]),
             (6, "Moving Servo 2 to 45°", [(1, 45)]),
             (7, "Moving Servo 1 to 90°", [(0, 90)]),
             (8, "Moving Servo 1 to 0°", [(0, 0)]),
-            (9, "Moving Servo 3 to 165°", [(2, 165)])
+            (9, "Moving Servo 3 to 165°", [(2, 100)])
         ]
         
         try:
