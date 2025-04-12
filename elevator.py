@@ -108,12 +108,12 @@ def run_servo_sequence_partial():
     servo_controller = ServoController()
     
     steps = [
-        (1, "Setting initial positions (Servo 1: 0°, Servo 2: 45°, Servo 3: 165°)", 
-         [(0, 0), (1, 45), (2, 165)]),
+        (1, "Setting initial positions (Servo 1: 0°, Servo 2: 45°, Servo 3: 100°)", 
+         [(0, 0), (1, 45), (2, 100)]),
         (2, "Moving Servo 1 to 90°", [(0, 90)]),
         (3, "Moving Servo 1 to 180°", [(0, 180)]),
         (4, "Moving Servo 2 to 130°", [(1, 130)]),
-        (5, "Moving Servo 3 to 180°", [(2, 180)]),
+        (5, "Moving Servo 3 to 180°", [(2, 130)]),
         (6, "Moving Servo 2 to 45°", [(1, 45)]),
         (7, "Moving Servo 1 to 90°", [(0, 90)]),
         (8, "Moving Servo 1 to 0°", [(0, 0)])
@@ -141,7 +141,7 @@ def run_servo_sequence_partial():
 
 def run_servo_final_step(servo_controller):
     """Run only the final step (step 9) of the servo sequence"""
-    print("Running final servo step (Step 9: Moving Servo 3 to 165°)...")
+    print("Running final servo step (Step 9: Moving Servo 3 to 100°)...")
     
     try:
         # Execute only step 9
